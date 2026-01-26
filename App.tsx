@@ -228,15 +228,15 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Branding Area - Perfectly Balanced */}
+        {/* Center Branding Area - Mathematically Centered */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
+           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
         </div>
 
-        {/* Right Area Spacer */}
+        {/* Right Area Spacer - Keeps grid balanced */}
         <div className="flex justify-end" />
       </header>
 

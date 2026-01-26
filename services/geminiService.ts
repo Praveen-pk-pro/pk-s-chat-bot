@@ -4,6 +4,13 @@ import { Message, Role } from "../types";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
+// Hardcoded Key Pool as requested
+const FALLBACK_KEYS = [
+  "AIzaSyA4YzJ6EvUNE3KJ0yYSMfsh02vgV-uuqrY",
+  "AIzaSyBw75cGJ00X3yZ3OIb4iwjHMtyMXxP-fuc",
+  "AIzaSyBMf5ay8auGwaMXi2pECRk8UuEtlZRksGw"
+];
+
 // Hardcoded core knowledge base
 const CORE_KNOWLEDGE = `
 INTERNAL KNOWLEDGE BASE (CORE):
@@ -34,17 +41,16 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  // Support for multiple keys separated by commas in the environment variable
+  // Check env first, then fallback to pool
   const rawApiKeys = process.env.API_KEY || "";
-  const apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
+  let apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
   
+  // Use fallback if no env keys are provided
   if (apiKeys.length === 0) {
-    console.error("SSEC AI: No API keys found in environment.");
-    onError(new Error("CONFIG_ERROR: No API keys detected. Please add your GEMINI_API_KEYs to Vercel Environment Variables as 'API_KEY'."));
-    return;
+    apiKeys = FALLBACK_KEYS;
   }
 
-  // Pick a random key from the rotation pool
+  // Pick a random key from the pool
   const selectedKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
 
   const dynamicKnowledge = getDynamicKnowledge();
@@ -61,7 +67,7 @@ export const streamGeminiResponse = async (
       model: MODEL_NAME,
       history,
       config: {
-        // Disable thinking budget to minimize latency and ensure immediate replies
+        // Force immediate response by disabling thinking
         thinkingConfig: { thinkingBudget: 0 },
         systemInstruction: `You are SSEC AI, a sophisticated RAG-enabled assistant. 
         ${CORE_KNOWLEDGE}
@@ -95,9 +101,8 @@ export const streamGeminiResponse = async (
 
   } catch (error: any) {
     console.error("SSEC AI: Neural link failed.", error);
-    // If the error looks like an auth issue, provide a helpful hint
     if (error?.message?.includes('API_KEY_INVALID') || error?.message?.includes('403')) {
-      onError(new Error("AUTH_ERROR: One of the provided API keys is invalid or restricted. Please verify your Gemini API keys."));
+      onError(new Error("AUTH_ERROR: One of the provided API keys has encountered an authentication issue. Refreshing the cycle..."));
     } else {
       onError(error);
     }
