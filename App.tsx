@@ -75,7 +75,7 @@ const App: React.FC = () => {
   }, [currentSession?.messages, hasMessages]);
 
   const handleSendMessage = async (content: string, isRetry = false) => {
-    if (!currentSessionId) return;
+    if (!currentSessionId || !currentSession) return;
 
     // Check for ADD(DATA="...", PASS=8344) command
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
@@ -134,8 +134,16 @@ const App: React.FC = () => {
     }
 
     setIsLoading(true);
-    const historyMessages = currentSession?.messages || [];
-    const finalMessages = isRetry ? historyMessages : [...historyMessages, { id: 'temp', role: Role.USER, content, timestamp: new Date() }];
+
+    // Filter out any previous error messages or streaming indicators for history
+    const historyMessages = currentSession.messages.filter(m => !m.isError && m.content.length > 0);
+    
+    // For RAG/Gemini call: we need history + current user prompt.
+    // If retry, the last message in 'historyMessages' is the correct prompt.
+    // If NOT retry, the new user message we just created is the prompt.
+    const finalMessages = isRetry 
+      ? historyMessages 
+      : [...historyMessages, { id: 'temp', role: Role.USER, content, timestamp: new Date() }];
 
     await streamGeminiResponse(
       finalMessages,
@@ -157,7 +165,7 @@ const App: React.FC = () => {
           ...s,
           messages: s.messages.map(m => m.id === botMessageId ? { 
             ...m, 
-            content: "The connection to SSEC AI core failed. Please ensure your API key is configured correctly and try again.", 
+            content: "The neural connection to SSEC AI core was unstable. Please check your network or API throughput and try again.", 
             isStreaming: false, 
             isError: true 
           } : m)
@@ -169,7 +177,8 @@ const App: React.FC = () => {
 
   const handleRetry = () => {
     if (!currentSession) return;
-    const lastUserMsg = [...currentSession.messages].reverse().find(m => m.role === Role.USER);
+    const userMessages = currentSession.messages.filter(m => m.role === Role.USER);
+    const lastUserMsg = userMessages[userMessages.length - 1];
     if (lastUserMsg) {
       handleSendMessage(lastUserMsg.content, true);
     }

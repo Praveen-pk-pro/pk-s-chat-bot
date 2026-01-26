@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Message, Role } from '../types';
-import { CopyIcon, CheckIcon } from './Icons';
+import { CopyIcon, CheckIcon, AlertCircleIcon, RefreshIcon } from './Icons';
 
 interface ChatMessageProps {
   message: Message;
@@ -10,19 +10,12 @@ interface ChatMessageProps {
 
 const highlightCode = (code: string, lang: string = '') => {
   const tokens = [
-    // Comments: Support //, /* */, # (Python/Shell), and <!-- --> (HTML)
     { name: 'comment', regex: /(\/\/.*|\/\*[\s\S]*?\*\/|#.*|<!--[\s\S]*?-->)/g, color: 'text-gray-500 italic' },
-    // Strings
     { name: 'string', regex: /(['"`][^'"`]*['"`])/g, color: 'text-amber-200' },
-    // HTML/JSX Tags
     { name: 'tag', regex: /(<\/?[a-zA-Z0-9\-\:]+\s*\/?>|<[a-zA-Z0-9\-\:]+\s+[^>]*\/?>)/g, color: 'text-pink-400' },
-    // Attributes in HTML/JSX
     { name: 'attr', regex: /\b([a-z\-]+)(?==)/g, color: 'text-emerald-300' },
-    // Broad Keywords (JS, Python, TS, C++, Java, etc.)
     { name: 'keyword', regex: /\b(const|let|var|function|return|if|else|for|while|import|export|class|interface|type|from|await|async|try|catch|new|this|true|false|null|undefined|def|elif|in|is|lambda|None|self|print|as|with|yield|break|continue|pass|raise|except|finally|and|or|not|del|global|nonlocal|assert|async|await|yield|public|private|protected|static|void|int|float|bool|string|list|dict|set|tuple)\b/g, color: 'text-purple-400' },
-    // Numbers
     { name: 'number', regex: /\b(\d+)\b/g, color: 'text-orange-300' },
-    // Functions
     { name: 'function', regex: /\b([a-zA-Z_]\w*)(?=\s*\()/g, color: 'text-blue-300' }
   ];
 
@@ -119,10 +112,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
       return () => clearInterval(interval);
     } else if (isBot && message.isStreaming) {
       setStatusText("SSEC AI Processing...");
+    } else if (isBot && message.isError) {
+      setStatusText("System Link Error");
     } else {
       setStatusText(isBot ? "SSEC AI" : "User Entry");
     }
-  }, [isBot, message.isStreaming, message.content]);
+  }, [isBot, message.isStreaming, message.isError, message.content]);
 
   const handleCopy = async () => {
     try {
@@ -152,6 +147,34 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
             <div className="h-[2px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent rounded-full" />
             <div className="h-[2px] w-3/4 bg-gradient-to-r from-cyan-500/50 to-transparent rounded-full" />
           </div>
+        </div>
+      );
+    }
+
+    if (isBot && message.isError) {
+      return (
+        <div className="py-2">
+          <div className="flex items-center gap-3 mb-4 text-red-400">
+            <div className="p-2 bg-red-500/10 rounded-lg border border-red-500/20 animate-pulse">
+              <AlertCircleIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] mb-0.5">Neural Link Interrupted</h4>
+              <p className="text-[10px] text-red-400/60 font-mono">STATUS_CODE: 503_ENDPOINT_BUSY</p>
+            </div>
+          </div>
+          <p className="text-red-200/70 text-[14px] leading-relaxed mb-6 italic">
+            {message.content}
+          </p>
+          {onRetry && (
+            <button 
+              onClick={onRetry}
+              className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white px-5 py-2.5 bg-red-500/20 border border-red-500/40 rounded-xl hover:bg-red-500/40 transition-all active:scale-95 group/retry shadow-lg shadow-red-950/20"
+            >
+              <RefreshIcon className="w-4 h-4 transition-transform duration-500 group-hover/retry:rotate-180" />
+              Re-Establish Connection
+            </button>
+          )}
         </div>
       );
     }
@@ -192,11 +215,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
         <div className={`relative px-6 py-4 rounded-2xl leading-relaxed whitespace-pre-wrap text-[15px] shadow-2xl transition-all duration-300 overflow-hidden ${
           isBot 
             ? message.isError 
-              ? 'text-red-400 bg-red-950/20 border border-red-500/30 rounded-tl-none'
+              ? 'text-red-400 bg-red-950/10 border border-red-500/20 rounded-tl-none shadow-red-900/10'
               : 'text-gray-200 bg-[#121212] border border-white/5 rounded-tl-none' 
             : 'text-white font-medium bg-white/10 border border-white/10 rounded-tr-none backdrop-blur-sm'
         }`}>
-          {/* Shimmer Effect while loading */}
           {isBot && message.isStreaming && !message.content && (
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent shimmer-mask pointer-events-none" />
           )}
@@ -214,19 +236,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
           <div className="relative z-10">
             {renderContent()}
           </div>
-          
-          {message.isError && onRetry && (
-            <button 
-              onClick={onRetry}
-              className="mt-4 block text-[11px] font-bold uppercase tracking-widest text-white px-4 py-2 bg-red-500/20 border border-red-500/40 rounded-lg hover:bg-red-500/40 transition-all active:scale-95"
-            >
-              Retry Connection
-            </button>
-          )}
         </div>
         
         <div className={`flex items-center gap-2 mt-2.5 px-1 opacity-40 group-hover:opacity-100 transition-opacity duration-500 ${isBot ? 'flex-row' : 'flex-row-reverse'}`}>
-          <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isBot && message.isStreaming ? 'text-cyan-400' : 'text-white'}`}>
+          <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isBot && message.isStreaming ? 'text-cyan-400' : (isBot && message.isError ? 'text-red-400' : 'text-white')}`}>
             {statusText}
           </span>
           <span className="text-[10px] text-white/40">•</span>
