@@ -26,6 +26,30 @@ export const BotIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+export const MenuIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+  </svg>
+);
+
+export const XIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+export const TrashIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.34 9m-4.78 0-.34-9m9.26-2.38a7.07 7.07 0 0 0-1.22-4.07 1 1 0 0 0-1.61.16l-.84 1.25t-.33.32a4.45 4.45 0 0 0-1.4 1c-.34.33-.35.84-.04 1.16l.11.12a1 1 0 0 0 1.34.08l.12-.1a2.45 2.45 0 0 1 .77-.55c.34-.14.71-.21 1.08-.21.43 0 .86.1 1.25.29.35.17.65.43.88.75.23.32.39.69.46 1.08.08.4.08.82 0 1.21-.08.34-.23.66-.44.93-.21.27-.49.49-.81.65a2.45 2.45 0 0 1-1.09.28l-.13.01a1 1 0 0 0-.91 1.09v.01a1 1 0 0 0 1.09.91h.13a4.45 4.45 0 0 0 2-.47c.62-.31 1.16-.76 1.57-1.31.41-.54.69-1.18.82-1.85.13-.67.13-1.36 0-2.03a7.1 7.1 0 0 0-.46-1.57Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M3 6h18m-2 0v14c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V6h14Zm-3 0V4c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v2h10Z" />
+  </svg>
+);
+
+export const PencilIcon = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={className}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" />
+  </svg>
+);
+
 export const TerminalIcon = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
     <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
