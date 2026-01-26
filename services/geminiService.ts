@@ -34,14 +34,18 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  // Validate API key existence immediately to prevent hanging
-  const apiKey = process.env.API_KEY;
+  // Support for multiple keys separated by commas in the environment variable
+  const rawApiKeys = process.env.API_KEY || "";
+  const apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
   
-  if (!apiKey || apiKey === "undefined" || apiKey === "") {
-    console.error("SSEC AI: No valid API key detected in process.env.API_KEY.");
-    onError(new Error("API_KEY_MISSING: Please ensure the Gemini API key is configured in your deployment environment variables."));
+  if (apiKeys.length === 0) {
+    console.error("SSEC AI: No API keys found in environment.");
+    onError(new Error("CONFIG_ERROR: No API keys detected. Please add your GEMINI_API_KEYs to Vercel Environment Variables as 'API_KEY'."));
     return;
   }
+
+  // Pick a random key from the rotation pool
+  const selectedKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
 
   const dynamicKnowledge = getDynamicKnowledge();
   const history = messages.slice(0, -1).map(msg => ({
@@ -51,12 +55,14 @@ export const streamGeminiResponse = async (
   const lastUserMessage = messages[messages.length - 1].content;
 
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    const ai = new GoogleGenAI({ apiKey: selectedKey });
     
     const chat = ai.chats.create({
       model: MODEL_NAME,
       history,
       config: {
+        // Disable thinking budget to minimize latency and ensure immediate replies
+        thinkingConfig: { thinkingBudget: 0 },
         systemInstruction: `You are SSEC AI, a sophisticated RAG-enabled assistant. 
         ${CORE_KNOWLEDGE}
         ${dynamicKnowledge}
@@ -80,7 +86,6 @@ export const streamGeminiResponse = async (
     let fullText = "";
     for await (const chunk of responseStream) {
       const c = chunk as GenerateContentResponse;
-      // Get text property directly as per Google GenAI guidelines
       const chunkText = c.text || "";
       fullText += chunkText;
       onChunk(chunkText);
@@ -90,6 +95,11 @@ export const streamGeminiResponse = async (
 
   } catch (error: any) {
     console.error("SSEC AI: Neural link failed.", error);
-    onError(error);
+    // If the error looks like an auth issue, provide a helpful hint
+    if (error?.message?.includes('API_KEY_INVALID') || error?.message?.includes('403')) {
+      onError(new Error("AUTH_ERROR: One of the provided API keys is invalid or restricted. Please verify your Gemini API keys."));
+    } else {
+      onError(error);
+    }
   }
 };

@@ -106,14 +106,11 @@ const App: React.FC = () => {
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
 
-    // Check for ADD(DATA="...", PASS=8344) command
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
     if (addMatch) {
       const data = addMatch[1];
       const pass = addMatch[2];
-
       const userMsg: Message = { id: Date.now().toString(), role: Role.USER, content, timestamp: new Date() };
-      
       let botResponse = "";
       if (pass === "8344") {
         try {
@@ -127,9 +124,7 @@ const App: React.FC = () => {
       } else {
         botResponse = "ERROR: Unauthorized access. Knowledge ingestion requires a valid secondary bypass key.";
       }
-
       const botMsg: Message = { id: (Date.now() + 1).toString(), role: Role.BOT, content: botResponse, timestamp: new Date() };
-      
       const updated = sessions.map(s => s.id === currentSessionId ? { ...s, messages: [...s.messages, userMsg, botMsg], updatedAt: new Date() } : s);
       setSessions(updated);
       saveSessionsToLocal(updated);
@@ -137,16 +132,12 @@ const App: React.FC = () => {
     }
 
     let botMessageId = (Date.now() + 1).toString();
-    
     if (!isRetry) {
       const userMessage: Message = { id: Date.now().toString(), role: Role.USER, content, timestamp: new Date() };
       const initialBotMessage: Message = { id: botMessageId, role: Role.BOT, content: '', timestamp: new Date(), isStreaming: true };
-
       const updated = sessions.map(s => {
         if (s.id === currentSessionId) {
-          const newTitle = s.messages.length === 0 
-            ? content.length > 30 ? content.substring(0, 27) + '...' : content
-            : s.title;
+          const newTitle = s.messages.length === 0 ? (content.length > 30 ? content.substring(0, 27) + '...' : content) : s.title;
           return { ...s, title: newTitle, messages: [...s.messages, userMessage, initialBotMessage], updatedAt: new Date() };
         }
         return s;
@@ -172,11 +163,8 @@ const App: React.FC = () => {
     }
 
     setIsLoading(true);
-
     const historyMessages = currentSession.messages.filter(m => !m.isError && m.content.length > 0);
-    const finalMessages = isRetry 
-      ? historyMessages 
-      : [...historyMessages, { id: 'temp', role: Role.USER, content, timestamp: new Date() }];
+    const finalMessages = isRetry ? historyMessages : [...historyMessages, { id: 'temp', role: Role.USER, content, timestamp: new Date() }];
 
     await streamGeminiResponse(
       finalMessages,
@@ -227,10 +215,10 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
-      {/* Header Bar */}
-      <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center px-6 bg-transparent pointer-events-none">
+      {/* Centered Header Bar */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
         {/* Left Action Area */}
-        <div className="flex-1 flex items-center pointer-events-auto">
+        <div className="flex items-center pointer-events-auto">
           <button 
             onClick={createNewSession}
             className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-95 group"
@@ -240,16 +228,16 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Centered Branding Area */}
-        <div className={`flex items-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
+        {/* Center Branding Area - Perfectly Balanced */}
+        <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
+           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_10px_rgba(34,211,238,0.8)]" />
         </div>
 
-        {/* Right Spacer Area */}
-        <div className="flex-1" />
+        {/* Right Area Spacer */}
+        <div className="flex justify-end" />
       </header>
 
       {/* Main Content Area */}
