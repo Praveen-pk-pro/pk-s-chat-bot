@@ -4,7 +4,7 @@ import { Role, Message, ChatSession } from './types';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import { streamGeminiResponse } from './services/geminiService';
-import { BotIcon, TerminalIcon, PlusIcon, MenuIcon, XIcon, TrashIcon, PencilIcon, CheckIcon } from './components/Icons';
+import { PlusIcon } from './components/Icons';
 
 const QUOTES = [
   "SSEC AI: Grounded in Intelligence.",
@@ -50,9 +50,6 @@ const App: React.FC = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
@@ -74,42 +71,7 @@ const App: React.FC = () => {
     setCurrentSessionId(newSession.id);
     localStorage.setItem('ssec_ai_current_id', newSession.id);
     saveSessionsToLocal(updated);
-    setIsSidebarOpen(false);
   }, [sessions]);
-
-  const deleteSession = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = sessions.filter(s => s.id !== id);
-    setSessions(updated);
-    saveSessionsToLocal(updated);
-    
-    if (currentSessionId === id) {
-      if (updated.length > 0) {
-        setCurrentSessionId(updated[0].id);
-        localStorage.setItem('ssec_ai_current_id', updated[0].id);
-      } else {
-        createNewSession();
-      }
-    }
-  };
-
-  const startRename = (id: string, title: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setEditingSessionId(id);
-    setEditTitle(title);
-  };
-
-  const confirmRename = (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (editingSessionId) {
-      const updated = sessions.map(s => 
-        s.id === editingSessionId ? { ...s, title: editTitle || 'Untitled Chat' } : s
-      );
-      setSessions(updated);
-      saveSessionsToLocal(updated);
-      setEditingSessionId(null);
-    }
-  };
 
   useEffect(() => {
     if (hasMessages) return;
@@ -241,7 +203,7 @@ const App: React.FC = () => {
             ...s,
             messages: s.messages.map(m => m.id === botMessageId ? { 
               ...m, 
-              content: "The neural connection to SSEC AI core was unstable. Please check your network or API throughput and try again.", 
+              content: error?.message || "The neural connection to SSEC AI core was unstable. Please check your network or API throughput and try again.", 
               isStreaming: false, 
               isError: true 
             } : m)
@@ -265,137 +227,35 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
-      {/* Sidebar Overlay (Mobile) */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Navigation Sidebar */}
-      <aside className={`fixed top-0 left-0 h-full w-[280px] bg-[#0d0d0d] border-r border-white/5 z-[60] transition-transform duration-500 ease-in-out flex flex-col ${
-        isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
-      }`}>
-        <div className="p-6 flex items-center justify-between">
-          <h2 className="text-xs font-bold uppercase tracking-[0.3em] text-white/40">Neural Archive</h2>
-          <button onClick={() => setIsSidebarOpen(false)} className="lg:hidden p-2 text-white/40 hover:text-white">
-            <XIcon className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="px-4 mb-6">
+      {/* Header Bar */}
+      <header className="fixed top-0 left-0 right-0 z-40 h-16 flex items-center px-6 bg-transparent pointer-events-none">
+        {/* Left Action Area */}
+        <div className="flex-1 flex items-center pointer-events-auto">
           <button 
             onClick={createNewSession}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all group active:scale-95"
+            className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-95 group"
+            title="Start New Discussion"
           >
-            <div className="p-1.5 bg-cyan-400/10 rounded-lg group-hover:bg-cyan-400/20 transition-colors">
-              <PlusIcon className="w-4 h-4 text-cyan-400" />
-            </div>
-            <span className="text-sm font-semibold text-white/80">New Connection</span>
+            <PlusIcon className="w-5 h-5 transition-transform group-hover:rotate-90" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar px-3 space-y-1">
-          {sessions.map(session => (
-            <div
-              key={session.id}
-              onClick={() => {
-                setCurrentSessionId(session.id);
-                localStorage.setItem('ssec_ai_current_id', session.id);
-                setIsSidebarOpen(false);
-              }}
-              className={`group relative flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-300 border ${
-                currentSessionId === session.id 
-                  ? 'bg-cyan-500/5 border-cyan-500/20 shadow-[0_0_20px_rgba(34,211,238,0.05)]' 
-                  : 'bg-transparent border-transparent hover:bg-white/5'
-              }`}
-            >
-              <div className={`w-1 h-1 rounded-full transition-colors ${
-                currentSessionId === session.id ? 'bg-cyan-400 animate-pulse' : 'bg-white/10'
-              }`} />
-              
-              <div className="flex-1 min-w-0 pr-10">
-                {editingSessionId === session.id ? (
-                  <form onSubmit={confirmRename} onClick={e => e.stopPropagation()}>
-                    <input
-                      autoFocus
-                      className="w-full bg-white/5 border border-cyan-500/30 rounded px-1.5 py-0.5 text-xs text-white outline-none"
-                      value={editTitle}
-                      onChange={e => setEditTitle(e.target.value)}
-                      onBlur={() => confirmRename()}
-                    />
-                  </form>
-                ) : (
-                  <p className={`text-xs font-medium truncate ${currentSessionId === session.id ? 'text-white' : 'text-white/40'}`}>
-                    {session.title}
-                  </p>
-                )}
-                <p className="text-[9px] font-mono text-white/20 mt-0.5">
-                  {new Date(session.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
-              </div>
-
-              <div className={`absolute right-2 flex items-center gap-1 transition-opacity ${
-                currentSessionId === session.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-              }`}>
-                <button 
-                  onClick={(e) => startRename(session.id, session.title, e)}
-                  className="p-1.5 rounded-lg hover:bg-white/10 text-white/20 hover:text-white"
-                >
-                  <PencilIcon className="w-3.5 h-3.5" />
-                </button>
-                <button 
-                  onClick={(e) => deleteSession(session.id, e)}
-                  className="p-1.5 rounded-lg hover:bg-red-500/10 text-white/20 hover:text-red-400"
-                >
-                  <TrashIcon className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="p-4 border-t border-white/5 bg-[#0a0a0a]/50">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-purple-500 flex items-center justify-center text-[10px] font-bold text-white shadow-lg">
-              SSEC
-            </div>
-            <div className="flex-1">
-              <p className="text-xs font-bold text-white/80">SSEC AI Hub</p>
-              <p className="text-[9px] text-white/30 uppercase tracking-widest">v1.2.0 Active</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
-      {/* Header Bar */}
-      <header className={`fixed top-0 right-0 z-40 h-16 flex items-center justify-between px-6 bg-transparent pointer-events-none transition-all duration-500 ${
-        isSidebarOpen ? 'lg:left-[280px]' : 'left-0 lg:left-[280px]'
-      }`}>
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="lg:hidden p-2 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white pointer-events-auto"
-        >
-          <MenuIcon className="w-5 h-5" />
-        </button>
-
-        <div className={`flex items-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100' : 'opacity-0'}`}>
-           <h1 className="hidden md:block text-sm font-bold tracking-[0.3em] uppercase text-white/40 font-['JetBrains_Mono']">
-             <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span> Archive
+        {/* Centered Branding Area */}
+        <div className={`flex items-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
+           <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
+             <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className="w-8 h-8 rounded-full border border-cyan-500/20 bg-cyan-500/5 flex items-center justify-center">
-             <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-           </div>
+           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.8)]" />
         </div>
+
+        {/* Right Spacer Area */}
+        <div className="flex-1" />
       </header>
 
-      {/* Content Main Container */}
-      <main className={`flex-1 flex flex-col relative z-10 overflow-hidden transition-all duration-500 ${
-        isSidebarOpen ? 'lg:ml-[280px]' : 'lg:ml-[280px]'
-      }`}>
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 relative flex flex-col items-center">
-          {/* Static Centered Content (shown when no messages) */}
+          {/* Welcome Screen */}
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${
             hasMessages ? 'opacity-0 translate-y-[-20vh] pointer-events-none' : 'opacity-100 translate-y-0'
           }`}>
@@ -408,7 +268,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Active Chat Messages */}
+          {/* Chat Messages */}
           <div className={`absolute inset-0 overflow-y-auto custom-scrollbar transition-all duration-1000 ease-out pt-24 ${
               hasMessages ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'
             }`}>
@@ -426,10 +286,10 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Input Interface */}
+          {/* Input Area */}
           <div className={`w-full max-w-4xl transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) z-30 px-4 flex flex-col items-center ${
             hasMessages 
-              ? 'fixed bottom-4 left-1/2 lg:left-[calc(50%+140px)] -translate-x-1/2' 
+              ? 'fixed bottom-4 left-1/2 -translate-x-1/2' 
               : 'relative mt-[72vh]'
           }`}>
              <ChatInput onSend={handleSendMessage} disabled={isLoading} />
@@ -449,7 +309,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className={`fixed bottom-0 left-0 lg:left-[280px] right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
+        {/* Bottom Fade */}
+        <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
       </main>
 
       {/* About Us Modal */}
