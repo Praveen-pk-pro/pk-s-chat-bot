@@ -24,6 +24,8 @@ const TEAM_MEMBERS = [
   { name: "PRITHIVIRAJ", role: "TEAM MEMBER [TM]", bio: "Knowledge Specialist, overseeing grounded context retrieval and prompt engineering." }
 ];
 
+const GITHUB_URL = "https://github.com/Praveen-pk-pro/pk-s-chat-bot";
+
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
     const saved = localStorage.getItem('ssec_ai_sessions');
@@ -106,7 +108,7 @@ const App: React.FC = () => {
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
 
-    // RAG Knowledge Ingestion Command Logic
+    // --- RAG Grounding ADD(DATA, PASS) Protocol ---
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
     if (addMatch) {
       const data = addMatch[1];
@@ -116,16 +118,18 @@ const App: React.FC = () => {
       let botResponse = "";
       if (pass === "8344") {
         try {
+          // Update internal RAG storage
           const currentKnowledge = JSON.parse(localStorage.getItem('ssec_rag_knowledge') || '[]');
           currentKnowledge.push(data);
           localStorage.setItem('ssec_rag_knowledge', JSON.stringify(currentKnowledge));
-          // Success Response as requested
-          botResponse = "ALL DONE. Data has been successfully updated in the SSEC AI core and synchronized with the repository.";
+          
+          // Reply exactly as requested
+          botResponse = "ALL DONE. The grounding buffer has been updated and the repository link synchronized.";
         } catch (e) {
-          botResponse = "ERROR: Local knowledge buffer overflow or write failure.";
+          botResponse = "ERROR: Failed to update local knowledge buffer. Storage limit exceeded.";
         }
       } else {
-        botResponse = "ERROR: Unauthorized access key. Verification failed.";
+        botResponse = "ERROR: Unauthorized. Bypass key rejected.";
       }
 
       const botMsg: Message = { id: (Date.now() + 1).toString(), role: Role.BOT, content: botResponse, timestamp: new Date() };
@@ -195,7 +199,7 @@ const App: React.FC = () => {
             ...s,
             messages: s.messages.map(m => m.id === botMessageId ? { 
               ...m, 
-              content: error?.message || "Connection timed out. Neural path to SSEC AI is unstable.", 
+              content: error?.message || "Connection timed out. Retrying link...", 
               isStreaming: false, 
               isError: true 
             } : m)
@@ -221,7 +225,7 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
       {/* Centered Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
-        {/* Left Side: New Chat Button */}
+        {/* Left Control Area */}
         <div className="flex items-center pointer-events-auto">
           <button 
             onClick={createNewSession}
@@ -232,7 +236,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Side: SSEC AI Logo (Mathematically Centered) */}
+        {/* Branding Area (Mathematically Centered) */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
@@ -240,14 +244,14 @@ const App: React.FC = () => {
            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
         </div>
 
-        {/* Right Side: Spacer to keep center balanced */}
+        {/* Right Spacer for Grid Alignment */}
         <div className="flex justify-end" />
       </header>
 
-      {/* Main Content */}
+      {/* Main Experience Layer */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 relative flex flex-col items-center">
-          {/* Landing State */}
+          {/* Welcome Interface */}
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${
             hasMessages ? 'opacity-0 translate-y-[-20vh] pointer-events-none' : 'opacity-100 translate-y-0'
           }`}>
@@ -260,7 +264,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Discussion Messages */}
+          {/* Neural Transcription Stream */}
           <div className={`absolute inset-0 overflow-y-auto custom-scrollbar transition-all duration-1000 ease-out pt-24 ${
               hasMessages ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'
             }`}>
@@ -278,7 +282,7 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* User Interaction Layer */}
+          {/* User Entry Interface */}
           <div className={`w-full max-w-4xl transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) z-30 px-4 flex flex-col items-center ${
             hasMessages 
               ? 'fixed bottom-4 left-1/2 -translate-x-1/2' 
@@ -294,18 +298,18 @@ const App: React.FC = () => {
                </p>
                <div className="flex justify-center gap-10 text-[10px] font-bold text-white/20 tracking-[0.2em] uppercase">
                  <button onClick={() => setIsAboutOpen(true)} className="hover:text-cyan-400 transition-colors cursor-pointer">About Us</button>
-                 <a href="#" className="hover:text-cyan-400 transition-colors">Documentation</a>
-                 <a href="https://github.com/Praveen-pk-pro/pk-s-chat-bot" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">Repository</a>
+                 <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">Repository</a>
+                 <a href="https://sreesakthi.edu.in" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">SSEC Official</a>
                </div>
              </footer>
           </div>
         </div>
 
-        {/* Ambient Overlay */}
+        {/* Ambient Gradient Overlay */}
         <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
       </main>
 
-      {/* Info Panel */}
+      {/* Information Panel (Modal) */}
       {isAboutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="absolute inset-0" onClick={() => setIsAboutOpen(false)} />
@@ -340,16 +344,17 @@ const App: React.FC = () => {
                 ))}
                 
                 <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-white/5 flex flex-col justify-center">
-                  <h4 className="text-lg font-bold text-white mb-2">Dynamic RAG Core</h4>
+                  <h4 className="text-lg font-bold text-white mb-2">Dynamic Grounding</h4>
                   <p className="text-sm text-white/60 italic leading-relaxed">
-                    "This system supports real-time ingestion of data via secured command protocols for persistent academic grounding."
+                    "This system supports real-time ingestion of knowledge buffers via secured protocol for persistent academic grounding."
                   </p>
+                  <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="mt-4 text-[10px] text-cyan-400 uppercase tracking-widest font-bold hover:underline">View Source Code</a>
                 </div>
               </div>
             </div>
             
             <div className="bg-white/5 p-6 flex items-center justify-center border-t border-white/5">
-              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">© 2025 SSEC IT | Information Technology Department</p>
+              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">© 2025 SSEC IT | Engineering Department</p>
             </div>
           </div>
         </div>
