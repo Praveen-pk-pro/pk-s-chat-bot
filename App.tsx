@@ -106,24 +106,28 @@ const App: React.FC = () => {
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
 
+    // RAG Knowledge Ingestion Command Logic
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
     if (addMatch) {
       const data = addMatch[1];
       const pass = addMatch[2];
       const userMsg: Message = { id: Date.now().toString(), role: Role.USER, content, timestamp: new Date() };
+      
       let botResponse = "";
       if (pass === "8344") {
         try {
           const currentKnowledge = JSON.parse(localStorage.getItem('ssec_rag_knowledge') || '[]');
           currentKnowledge.push(data);
           localStorage.setItem('ssec_rag_knowledge', JSON.stringify(currentKnowledge));
-          botResponse = `SUCCESS: Data has been ingested into the SSEC AI Knowledge Hub. Retrieval systems updated. Grounding now active for: "${data}"`;
+          // Success Response as requested
+          botResponse = "ALL DONE. Data has been successfully updated in the SSEC AI core and synchronized with the repository.";
         } catch (e) {
-          botResponse = "ERROR: Failed to update internal knowledge buffer.";
+          botResponse = "ERROR: Local knowledge buffer overflow or write failure.";
         }
       } else {
-        botResponse = "ERROR: Unauthorized access. Knowledge ingestion requires a valid secondary bypass key.";
+        botResponse = "ERROR: Unauthorized access key. Verification failed.";
       }
+
       const botMsg: Message = { id: (Date.now() + 1).toString(), role: Role.BOT, content: botResponse, timestamp: new Date() };
       const updated = sessions.map(s => s.id === currentSessionId ? { ...s, messages: [...s.messages, userMsg, botMsg], updatedAt: new Date() } : s);
       setSessions(updated);
@@ -191,7 +195,7 @@ const App: React.FC = () => {
             ...s,
             messages: s.messages.map(m => m.id === botMessageId ? { 
               ...m, 
-              content: error?.message || "The neural connection to SSEC AI core was unstable. Please check your network or API throughput and try again.", 
+              content: error?.message || "Connection timed out. Neural path to SSEC AI is unstable.", 
               isStreaming: false, 
               isError: true 
             } : m)
@@ -217,7 +221,7 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
       {/* Centered Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
-        {/* Left Action Area */}
+        {/* Left Side: New Chat Button */}
         <div className="flex items-center pointer-events-auto">
           <button 
             onClick={createNewSession}
@@ -228,7 +232,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Branding Area - Mathematically Centered */}
+        {/* Center Side: SSEC AI Logo (Mathematically Centered) */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
@@ -236,14 +240,14 @@ const App: React.FC = () => {
            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
         </div>
 
-        {/* Right Area Spacer - Keeps grid balanced */}
+        {/* Right Side: Spacer to keep center balanced */}
         <div className="flex justify-end" />
       </header>
 
-      {/* Main Content Area */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 relative flex flex-col items-center">
-          {/* Welcome Screen */}
+          {/* Landing State */}
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${
             hasMessages ? 'opacity-0 translate-y-[-20vh] pointer-events-none' : 'opacity-100 translate-y-0'
           }`}>
@@ -256,7 +260,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Chat Messages */}
+          {/* Discussion Messages */}
           <div className={`absolute inset-0 overflow-y-auto custom-scrollbar transition-all duration-1000 ease-out pt-24 ${
               hasMessages ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'
             }`}>
@@ -274,7 +278,7 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* Input Area */}
+          {/* User Interaction Layer */}
           <div className={`w-full max-w-4xl transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) z-30 px-4 flex flex-col items-center ${
             hasMessages 
               ? 'fixed bottom-4 left-1/2 -translate-x-1/2' 
@@ -291,17 +295,17 @@ const App: React.FC = () => {
                <div className="flex justify-center gap-10 text-[10px] font-bold text-white/20 tracking-[0.2em] uppercase">
                  <button onClick={() => setIsAboutOpen(true)} className="hover:text-cyan-400 transition-colors cursor-pointer">About Us</button>
                  <a href="#" className="hover:text-cyan-400 transition-colors">Documentation</a>
-                 <a href="#" className="hover:text-cyan-400 transition-colors">SSEC IT</a>
+                 <a href="https://github.com/Praveen-pk-pro/pk-s-chat-bot" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">Repository</a>
                </div>
              </footer>
           </div>
         </div>
 
-        {/* Bottom Fade */}
+        {/* Ambient Overlay */}
         <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
       </main>
 
-      {/* About Us Modal */}
+      {/* Info Panel */}
       {isAboutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="absolute inset-0" onClick={() => setIsAboutOpen(false)} />
