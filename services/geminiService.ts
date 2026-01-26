@@ -4,6 +4,30 @@ import { Message, Role } from "../types";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
+// Hardcoded core knowledge base
+const CORE_KNOWLEDGE = `
+INTERNAL KNOWLEDGE BASE (CORE):
+- SSEC stands for SREE SAKTHI ENGINEERING COLLEGE.
+- SSEC AI is a project developed specifically by 2nd-year Information Technology (IT) students.
+- Project Team Members and Roles:
+  1. PRAVEEN KUMAR [Team Lead - TL]
+  2. SARAN [Team Member - TM]
+  3. SANJAY [Team Member - TM]
+  4. SENNANPOSALI [Team Member - TM]
+  5. PRITHIVIRAJ [Team Member - TM]
+`;
+
+const getDynamicKnowledge = (): string => {
+  try {
+    const stored = localStorage.getItem('ssec_rag_knowledge');
+    if (!stored) return '';
+    const items: string[] = JSON.parse(stored);
+    return `\nUSER-ADDED KNOWLEDGE:\n${items.join('\n')}`;
+  } catch (e) {
+    return '';
+  }
+};
+
 export const streamGeminiResponse = async (
   messages: Message[],
   onChunk: (text: string) => void,
@@ -11,9 +35,9 @@ export const streamGeminiResponse = async (
   onError: (error: any) => void
 ) => {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const dynamicKnowledge = getDynamicKnowledge();
     
-    // Convert our message format to Gemini's history format
     const history = messages.slice(0, -1).map(msg => ({
       role: msg.role === Role.USER ? 'user' : 'model',
       parts: [{ text: msg.content }]
@@ -21,8 +45,23 @@ export const streamGeminiResponse = async (
 
     const chat = ai.chats.create({
       model: MODEL_NAME,
+      history,
       config: {
-        systemInstruction: "You are Gemini Pulse, a helpful, intelligent, and highly professional AI assistant. Provide clear, concise, and accurate information. Use markdown for formatting, especially for code blocks, bold text, and lists.",
+        systemInstruction: `You are SSEC AI, a sophisticated RAG-enabled assistant. 
+        ${CORE_KNOWLEDGE}
+        ${dynamicKnowledge}
+        
+        INSTRUCTIONS:
+        1. If a user asks about SSEC or its team, use the CORE KNOWLEDGE.
+        2. If a user asks about topics found in USER-ADDED KNOWLEDGE, use that information to answer.
+        3. DO NOT proactively introduce yourself. ONLY share identity information if asked.
+        4. Maintain a helpful, direct, and intelligent tone.
+        
+        TECHNICAL GUIDELINES:
+        - Provide accurate and direct information. 
+        - DO NOT use markdown symbols like asterisks (**) or hashes (#).
+        - Use triple backticks for code.
+        - Respond naturally.`,
       },
     });
 
@@ -31,7 +70,8 @@ export const streamGeminiResponse = async (
 
     let fullText = "";
     for await (const chunk of responseStream) {
-      const chunkText = chunk.text || "";
+      const c = chunk as GenerateContentResponse;
+      const chunkText = c.text || "";
       fullText += chunkText;
       onChunk(chunkText);
     }
