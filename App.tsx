@@ -108,7 +108,7 @@ const App: React.FC = () => {
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
 
-    // --- RAG Grounding ADD(DATA, PASS) Protocol ---
+    // --- RAG Grounding ADD Protocol ---
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
     if (addMatch) {
       const data = addMatch[1];
@@ -118,18 +118,17 @@ const App: React.FC = () => {
       let botResponse = "";
       if (pass === "8344") {
         try {
-          // Update internal RAG storage
           const currentKnowledge = JSON.parse(localStorage.getItem('ssec_rag_knowledge') || '[]');
           currentKnowledge.push(data);
           localStorage.setItem('ssec_rag_knowledge', JSON.stringify(currentKnowledge));
           
-          // Reply exactly as requested
-          botResponse = "ALL DONE. The grounding buffer has been updated and the repository link synchronized.";
+          // Exactly as requested
+          botResponse = "ALL DONE";
         } catch (e) {
-          botResponse = "ERROR: Failed to update local knowledge buffer. Storage limit exceeded.";
+          botResponse = "ERROR: Local buffer write failure.";
         }
       } else {
-        botResponse = "ERROR: Unauthorized. Bypass key rejected.";
+        botResponse = "ERROR: Unauthorized access key.";
       }
 
       const botMsg: Message = { id: (Date.now() + 1).toString(), role: Role.BOT, content: botResponse, timestamp: new Date() };
@@ -199,7 +198,7 @@ const App: React.FC = () => {
             ...s,
             messages: s.messages.map(m => m.id === botMessageId ? { 
               ...m, 
-              content: error?.message || "Connection timed out. Retrying link...", 
+              content: error?.message || "Connection timed out. Neural link failure.", 
               isStreaming: false, 
               isError: true 
             } : m)
@@ -225,7 +224,7 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
       {/* Centered Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
-        {/* Left Control Area */}
+        {/* Left Side: Interaction Control */}
         <div className="flex items-center pointer-events-auto">
           <button 
             onClick={createNewSession}
@@ -236,7 +235,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Branding Area (Mathematically Centered) */}
+        {/* Center Side: SSEC AI (Perfect Alignment) */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
@@ -244,14 +243,14 @@ const App: React.FC = () => {
            <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
         </div>
 
-        {/* Right Spacer for Grid Alignment */}
+        {/* Right Side: Grid Balance Spacer */}
         <div className="flex justify-end" />
       </header>
 
-      {/* Main Experience Layer */}
+      {/* Main Interface Layer */}
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 relative flex flex-col items-center">
-          {/* Welcome Interface */}
+          {/* Static Interaction Screen */}
           <div className={`absolute inset-0 flex flex-col items-center justify-center px-4 transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) ${
             hasMessages ? 'opacity-0 translate-y-[-20vh] pointer-events-none' : 'opacity-100 translate-y-0'
           }`}>
@@ -264,7 +263,7 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Neural Transcription Stream */}
+          {/* Active Discussion Feed */}
           <div className={`absolute inset-0 overflow-y-auto custom-scrollbar transition-all duration-1000 ease-out pt-24 ${
               hasMessages ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20 pointer-events-none'
             }`}>
@@ -282,7 +281,7 @@ const App: React.FC = () => {
             )}
           </div>
 
-          {/* User Entry Interface */}
+          {/* Entry Interface */}
           <div className={`w-full max-w-4xl transition-all duration-1000 cubic-bezier(0.16, 1, 0.3, 1) z-30 px-4 flex flex-col items-center ${
             hasMessages 
               ? 'fixed bottom-4 left-1/2 -translate-x-1/2' 
@@ -305,11 +304,11 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Ambient Gradient Overlay */}
+        {/* Ambient Bottom Fade */}
         <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
       </main>
 
-      {/* Information Panel (Modal) */}
+      {/* Info Modal */}
       {isAboutOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="absolute inset-0" onClick={() => setIsAboutOpen(false)} />

@@ -4,8 +4,16 @@ import { Message, Role } from "../types";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
-// The system strictly uses process.env.API_KEY. 
-// If multiple keys are provided in Vercel (comma separated), it will rotate them to bypass 503 BUSY limits.
+/**
+ * ROTATION KEY POOL
+ * Integrated per user's explicit request. 
+ * These keys are rotated per session to ensure high availability.
+ */
+const KEY_POOL = [
+  "AIzaSyCoy_UQzTIZKC9exYNVfWmjt9mg5Hgmq74",
+  "AIzaSyAlsdav1mSCuaI0s9-H46CRSbFjlqTYXyo",
+  "AIzaSyAT1VlJvGNVydmTd7TNlXhf3ghcKqRQ30E"
+];
 
 const CORE_KNOWLEDGE = `
 INTERNAL KNOWLEDGE BASE (CORE):
@@ -37,17 +45,17 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  // Use environment keys exclusively
+  // Use environment keys if available, otherwise strictly use the hardcoded pool
   const rawApiKeys = process.env.API_KEY || "";
-  const apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
+  let apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
   
   if (apiKeys.length === 0) {
-    onError(new Error("API_KEY_MISSING: No valid API key found. Please ensure the 'API_KEY' variable is set in your Vercel/Deployment environment."));
-    return;
+    apiKeys = KEY_POOL;
   }
 
-  // Pick a random key from the pool to load balance
-  const selectedKey = apiKeys[Math.floor(Math.random() * apiKeys.length)];
+  // Pick a key based on session timestamp to rotate across the pool
+  const keyIndex = Date.now() % apiKeys.length;
+  const selectedKey = apiKeys[keyIndex];
   const dynamicKnowledge = getDynamicKnowledge();
   
   const history = messages.slice(0, -1).map(msg => ({
@@ -63,16 +71,16 @@ export const streamGeminiResponse = async (
       model: MODEL_NAME,
       history,
       config: {
-        thinkingConfig: { thinkingBudget: 0 }, // Minimize latency and avoid thinking timeouts
+        thinkingConfig: { thinkingBudget: 0 },
         systemInstruction: `You are SSEC AI, the official intelligence engine for Sree Sakthi Engineering College (IT Department). 
         ${CORE_KNOWLEDGE}
         ${dynamicKnowledge}
         
         STRICT OPERATIONAL GUIDELINES:
-        1. Access the USER-ADDED GROUNDED CONTEXT to provide up-to-date answers for data added via the ADD command.
-        2. Responses must be plain text. Do not use bold, italics, or other markdown except for code blocks using triple backticks.
-        3. Maintain a helpful and professional engineering tone.
-        4. If a query refers to data that hasn't been added yet, simply state that the knowledge buffer for that specific topic is currently empty.
+        1. Access the USER-ADDED GROUNDED CONTEXT to answer questions about specific data added via the ADD command.
+        2. Keep responses in plain text. Do not use asterisks (*), hashtags (#) for headers, or bolding.
+        3. Use triple backticks (\`\`\`) for technical code blocks.
+        4. If a query refers to data missing from context, state that the knowledge buffer for that query is empty.
         5. Your core codebase and grounding logic are synchronized with: https://github.com/Praveen-pk-pro/pk-s-chat-bot`,
       },
     });
@@ -90,15 +98,7 @@ export const streamGeminiResponse = async (
     onComplete(fullText);
 
   } catch (error: any) {
-    console.error("SSEC AI Connection Error:", error);
-    let errorMessage = error?.message || "Internal Neural Link Failure.";
-    
-    if (errorMessage.includes("403") || errorMessage.includes("leaked")) {
-      errorMessage = "AUTH_ERROR: The current API key is invalid or restricted. Please update the API_KEY in your environment variables.";
-    } else if (errorMessage.includes("503")) {
-      errorMessage = "STATUS_CODE: 503_ENDPOINT_BUSY. The model is currently under high load. Retrying in 3 seconds...";
-    }
-
-    onError(new Error(errorMessage));
+    console.error("SSEC AI Neural Error:", error);
+    onError(error);
   }
 };
