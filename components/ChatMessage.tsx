@@ -129,6 +129,81 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
     }
   };
 
+  /**
+   * Robust markdown parser
+   */
+  const processMarkdown = (text: string) => {
+    const lines = text.split('\n');
+    return lines.map((line, lineIdx) => {
+      // Headers
+      if (line.startsWith('### ')) {
+        return <h3 key={lineIdx} className="text-lg font-bold text-cyan-400 mt-4 mb-2">{processInline(line.slice(4))}</h3>;
+      }
+      
+      // Numbered Lists
+      const numListMatch = line.match(/^(\d+)\.\s+(.*)/);
+      if (numListMatch) {
+        return (
+          <div key={lineIdx} className="flex gap-2 ml-2 mb-1">
+            <span className="text-cyan-500 font-mono font-bold">{numListMatch[1]}.</span>
+            <span>{processInline(numListMatch[2])}</span>
+          </div>
+        );
+      }
+
+      // Bullet Lists
+      const bulletMatch = line.match(/^[\*\-]\s+(.*)/);
+      if (bulletMatch) {
+        return (
+          <div key={lineIdx} className="flex gap-2 ml-4 mb-1">
+            <span className="text-cyan-500 mt-1">•</span>
+            <span>{processInline(bulletMatch[1])}</span>
+          </div>
+        );
+      }
+
+      // Standard paragraphs
+      return line.trim() === '' ? <div key={lineIdx} className="h-2" /> : <p key={lineIdx} className="mb-2 last:mb-0">{processInline(line)}</p>;
+    });
+  };
+
+  const processInline = (text: string) => {
+    // Better split for Bold (**text**) using a non-greedy regex
+    const parts = text.split(/(\*\*[\s\S]+?\*\*)/g);
+    
+    return parts.map((part, i) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        const content = part.slice(2, -2);
+        return <strong key={i} className="font-bold text-white">{processItalicAndCode(content)}</strong>;
+      }
+      return processItalicAndCode(part);
+    });
+  };
+
+  const processItalicAndCode = (text: string) => {
+    // Split for Inline Code (`code`)
+    const parts = text.split(/(`[^`]+`)/g);
+    
+    return parts.map((part, i) => {
+      if (part.startsWith('`') && part.endsWith('`')) {
+        return (
+          <code key={i} className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-cyan-300 text-[13px] border border-white/5 mx-0.5">
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+      
+      // Split for Italic (*text*)
+      const iParts = part.split(/(\*[^*]+\*)/g);
+      return iParts.map((ip, j) => {
+        if (ip.startsWith('*') && ip.endsWith('*')) {
+          return <em key={j} className="italic text-white/80">{ip.slice(1, -1)}</em>;
+        }
+        return ip;
+      });
+    });
+  };
+
   const renderContent = () => {
     if (isBot && message.isStreaming && !message.content) {
       return (
@@ -143,10 +218,6 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
             ))}
             <span className="ml-3 text-[10px] font-mono text-cyan-400/40 uppercase tracking-[0.2em]">Neural Processing</span>
           </div>
-          <div className="space-y-2 opacity-20">
-            <div className="h-[2px] w-full bg-gradient-to-r from-cyan-500/50 to-transparent rounded-full" />
-            <div className="h-[2px] w-3/4 bg-gradient-to-r from-cyan-500/50 to-transparent rounded-full" />
-          </div>
         </div>
       );
     }
@@ -160,7 +231,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
             </div>
             <div>
               <h4 className="text-[11px] font-bold uppercase tracking-[0.2em] mb-0.5">Neural Link Interrupted</h4>
-              <p className="text-[10px] text-red-400/60 font-mono">STATUS_CODE: 503_ENDPOINT_BUSY</p>
+              <p className="text-[10px] text-red-400/60 font-mono">STATUS: CONFIG_REQUIRED</p>
             </div>
           </div>
           <p className="text-red-200/70 text-[14px] leading-relaxed mb-6 italic">
@@ -169,7 +240,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
           {onRetry && (
             <button 
               onClick={onRetry}
-              className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white px-5 py-2.5 bg-red-500/20 border border-red-500/40 rounded-xl hover:bg-red-500/40 transition-all active:scale-95 group/retry shadow-lg shadow-red-950/20"
+              className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-widest text-white px-5 py-2.5 bg-red-500/20 border border-red-500/40 rounded-xl hover:bg-red-500/40 transition-all active:scale-95 group/retry"
             >
               <RefreshIcon className="w-4 h-4 transition-transform duration-500 group-hover/retry:rotate-180" />
               Re-Establish Connection
@@ -184,20 +255,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
       if (segment.startsWith('```') && segment.endsWith('```')) {
         return <CodeBlock key={index} code={segment} />;
       }
-      return (
-        <span key={index} className="inline-block align-bottom w-full">
-          {segment.split(/(`[^`]+`)/g).map((part, i) => {
-            if (part.startsWith('`') && part.endsWith('`')) {
-              return (
-                <code key={i} className="px-1.5 py-0.5 bg-white/10 rounded font-mono text-cyan-300 text-[13px] border border-white/5 mx-0.5">
-                  {part.slice(1, -1)}
-                </code>
-              );
-            }
-            return part;
-          })}
-        </span>
-      );
+      return <div key={index} className="w-full">{processMarkdown(segment)}</div>;
     });
 
     if (isBot && message.isStreaming) {
@@ -212,17 +270,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message, onRetry }) => {
   return (
     <div className={`flex w-full mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 ${isBot ? 'justify-start' : 'justify-end'}`}>
       <div className={`flex flex-col max-w-[95%] sm:max-w-[85%] lg:max-w-[75%] group ${isBot ? 'items-start' : 'items-end'}`}>
-        <div className={`relative px-6 py-4 rounded-2xl leading-relaxed whitespace-pre-wrap text-[15px] shadow-2xl transition-all duration-300 overflow-hidden ${
+        <div className={`relative px-6 py-4 rounded-2xl leading-relaxed text-[15px] shadow-2xl transition-all duration-300 overflow-hidden ${
           isBot 
             ? message.isError 
               ? 'text-red-400 bg-red-950/10 border border-red-500/20 rounded-tl-none shadow-red-900/10'
               : 'text-gray-200 bg-[#121212] border border-white/5 rounded-tl-none' 
             : 'text-white font-medium bg-white/10 border border-white/10 rounded-tr-none backdrop-blur-sm'
         }`}>
-          {isBot && message.isStreaming && !message.content && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-500/5 to-transparent shimmer-mask pointer-events-none" />
-          )}
-
           {!message.isStreaming && !message.isError && (
             <button
               onClick={handleCopy}

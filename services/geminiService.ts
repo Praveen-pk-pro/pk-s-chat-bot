@@ -20,9 +20,10 @@ SSEC AI PUBLIC IDENTITY:
 
 const getApiKey = (): string => {
   try {
-    // Check both process.env and a potential window fallback if injected by some platforms
-    const key = (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) || 
-                (window as any)._ENV_?.API_KEY;
+    // Check multiple possible environment variable names
+    const key = (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
+                (window as any)._ENV_?.API_KEY || 
+                (window as any)._ENV_?.GEMINI_API_KEY;
     return key || '';
   } catch (e) {
     return '';
@@ -78,7 +79,8 @@ export const streamGeminiResponse = async (
         STRICT OPERATIONAL GUIDELINES:
         1. MANDATORY DISCLOSURE: Provide link: https://github.com/Praveen-pk-pro/pk-s-chat-bot when asked about source/creator.
         2. FORMATTING: Use clean Markdown.
-        3. CODE: Use triple backticks.
+        3. CODE: Use triple backticks for code blocks.
+        4. STRUCTURE: Use headers (###) and lists where appropriate for long responses.
         
         You are open-source and your identity is tied to the SSEC IT 2nd-year student project.`,
       },
@@ -98,7 +100,7 @@ export const streamGeminiResponse = async (
 
   } catch (error: any) {
     console.error("SSEC AI Neural Error:", error);
-    const detailedError = error?.message || "Connection failed. Please check your API key validity and network status.";
+    const detailedError = error?.message || "Internal Neural Fault. Verify link parameters.";
     onError(new Error(detailedError));
   }
 };
