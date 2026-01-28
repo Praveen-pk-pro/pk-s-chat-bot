@@ -10,7 +10,7 @@ const QUOTES = [
   "SSEC AI: Grounded in Intelligence.",
   "Engineering the future at Sree Sakthi Engineering College.",
   "Empowering SSEC IT students through AI.",
-  "Built by SSEC students, for the world.",
+  "Built by SSEC IT students, for the world.",
   "First, solve the problem. Then, write the code."
 ];
 
@@ -127,15 +127,14 @@ const App: React.FC = () => {
         setIsKeyMissing(false);
       },
       (error) => {
-        // Only trigger blocking UI if we're sure it's a key issue
-        if (error?.message === "API_KEY_MISSING") setIsKeyMissing(true);
-        
         setIsLoading(false);
+        const errorMessage = error?.message || "Neural connection interrupted.";
+        
         setSessions(prev => prev.map(s => s.id === currentSessionId ? {
           ...s,
           messages: s.messages.map(m => m.id === botMessageId ? { 
             ...m, 
-            content: `Neural connection interrupted. This usually happens if the API key provided is restricted or invalid for the requested models. Check console for details.`, 
+            content: `CRITICAL ERROR: ${errorMessage}\n\nPlease verify that your API keys are valid and have not exceeded their usage limits in Google AI Studio.`, 
             isStreaming: false, 
             isError: true 
           } : m)
@@ -178,28 +177,6 @@ const App: React.FC = () => {
             {currentSession && (
               <div className="w-full max-w-4xl mx-auto px-6 py-12">
                 {currentSession.messages.map(msg => <ChatMessage key={msg.id} message={msg} onRetry={() => handleSendMessage(currentSession.messages[currentSession.messages.length - 2]?.content || "")} />)}
-                
-                {isKeyMissing && (
-                  <div className="mt-8 p-10 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-6 duration-700">
-                    <div className="flex items-center gap-5 mb-8">
-                      <div className="p-4 bg-red-500/20 rounded-2xl text-red-400">
-                        <AlertCircleIcon className="w-8 h-8" />
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-white">Connection Error</h3>
-                        <p className="text-sm text-red-400 font-mono tracking-widest uppercase opacity-60">Status: Key Configuration Required</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-6 text-white/60 text-sm leading-relaxed">
-                      <p>The neural link could not be established. If you have hardcoded the key, ensure it is active in your Google AI Studio dashboard.</p>
-                      <div className="pt-4 flex justify-center">
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" className="px-8 py-3 bg-white text-black rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-cyan-400 hover:scale-105 transition-all">Check API Key Status</a>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
                 <div ref={messagesEndRef} className="h-40" />
               </div>
             )}
