@@ -268,7 +268,7 @@ const App: React.FC = () => {
                             <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">1</span>
                             Vercel Setup
                           </h4>
-                          <p className="text-xs">Navigate to <strong>Settings > Environment Variables</strong>. Add <code>API_KEY</code> with your Gemini key. <strong>Redeploy</strong> to apply changes.</p>
+                          <p className="text-xs">Navigate to <strong>Settings &gt; Environment Variables</strong>. Add <code>API_KEY</code> with your Gemini key. <strong>Redeploy</strong> to apply changes.</p>
                         </div>
                         <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
                           <h4 className="text-white font-bold mb-2 flex items-center gap-2">
