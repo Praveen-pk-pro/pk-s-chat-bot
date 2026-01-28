@@ -20,9 +20,9 @@ SSEC AI PUBLIC IDENTITY:
 
 const getApiKey = (): string => {
   try {
-    // Note: Vercel environment variables are often only available during build or in edge/serverless functions.
-    // If this runs purely in the browser, ensure your build tool (if any) is injecting process.env.
-    const key = typeof process !== 'undefined' ? process.env?.API_KEY : undefined;
+    // Check both process.env and a potential window fallback if injected by some platforms
+    const key = (typeof process !== 'undefined' ? process.env?.API_KEY : undefined) || 
+                (window as any)._ENV_?.API_KEY;
     return key || '';
   } catch (e) {
     return '';
@@ -49,7 +49,7 @@ export const streamGeminiResponse = async (
   const apiKey = getApiKey();
 
   if (!apiKey) {
-    const error = new Error("API_KEY_MISSING: Environment variable not found. Check Vercel project settings and ensure you redeployed after adding the key.");
+    const error = new Error("API_KEY_MISSING");
     onError(error);
     return;
   }
@@ -98,7 +98,7 @@ export const streamGeminiResponse = async (
 
   } catch (error: any) {
     console.error("SSEC AI Neural Error:", error);
-    const detailedError = error?.message || "Failed to connect to Gemini API. Check your network or API key permissions.";
+    const detailedError = error?.message || "Connection failed. Please check your API key validity and network status.";
     onError(new Error(detailedError));
   }
 };

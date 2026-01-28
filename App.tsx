@@ -4,7 +4,7 @@ import { Role, Message, ChatSession } from './types';
 import ChatMessage from './components/ChatMessage';
 import ChatInput from './components/ChatInput';
 import { streamGeminiResponse } from './services/geminiService';
-import { PlusIcon } from './components/Icons';
+import { PlusIcon, AlertCircleIcon } from './components/Icons';
 
 const QUOTES = [
   "SSEC AI: Grounded in Intelligence.",
@@ -52,6 +52,7 @@ const App: React.FC = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isKeyMissing, setIsKeyMissing] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
@@ -161,14 +162,18 @@ const App: React.FC = () => {
           return updated;
         });
         setIsLoading(false);
+        setIsKeyMissing(false);
       },
       (error) => {
+        if (error?.message === "API_KEY_MISSING") {
+          setIsKeyMissing(true);
+        }
         setSessions(prev => {
           const updated = prev.map(s => s.id === currentSessionId ? {
             ...s,
             messages: s.messages.map(m => m.id === botMessageId ? { 
               ...m, 
-              content: error?.message || "Connection timed out. Neural link failure.", 
+              content: error?.message === "API_KEY_MISSING" ? "Neural link disconnected. Configuration required." : (error?.message || "Connection timed out."), 
               isStreaming: false, 
               isError: true 
             } : m)
@@ -194,7 +199,6 @@ const App: React.FC = () => {
     <div className="flex h-screen w-full overflow-hidden relative bg-[#0a0a0a]">
       {/* Centered Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
-        {/* Left Side: Interaction Control */}
         <div className="flex items-center pointer-events-auto gap-2">
           <button 
             onClick={createNewSession}
@@ -205,16 +209,12 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Side: SSEC AI */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] animate-pulse" />
+           <div className={`w-2 h-2 rounded-full shadow-[0_0_12px_rgba(34,211,238,0.9)] animate-pulse ${isKeyMissing ? 'bg-red-500 shadow-red-500/50' : 'bg-cyan-400'}`} />
         </div>
-
-        {/* Right Side Balance */}
-        <div className="flex justify-end" />
       </header>
 
       {/* Main Interface Layer */}
@@ -246,6 +246,42 @@ const App: React.FC = () => {
                     onRetry={msg.isError ? handleRetry : undefined}
                   />
                 ))}
+                
+                {isKeyMissing && (
+                  <div className="mt-8 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-4 duration-1000">
+                    <div className="flex items-center gap-4 mb-6">
+                      <div className="p-3 bg-red-500/20 rounded-2xl text-red-400">
+                        <AlertCircleIcon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-white">Connection Required</h3>
+                        <p className="text-sm text-white/40 uppercase tracking-widest font-bold">Neural Interface: Offline</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-6 text-sm leading-relaxed text-white/60">
+                      <p>SSEC AI requires an <strong>API_KEY</strong> environment variable to function. Follow these steps to establish the link:</p>
+                      
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
+                          <h4 className="text-white font-bold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">1</span>
+                            Vercel Setup
+                          </h4>
+                          <p className="text-xs">Navigate to <strong>Settings > Environment Variables</strong>. Add <code>API_KEY</code> with your Gemini key. <strong>Redeploy</strong> to apply changes.</p>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
+                          <h4 className="text-white font-bold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">2</span>
+                            Local Setup
+                          </h4>
+                          <p className="text-xs">Create a <code>.env</code> file in the root directory and add <code>API_KEY=your_key_here</code>.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <div ref={messagesEndRef} className="h-40" />
               </div>
             )}
@@ -273,7 +309,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Ambient Bottom Fade */}
         <div className={`fixed bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-[#0a0a0a] via-[#0a0a0a]/90 to-transparent pointer-events-none transition-opacity duration-1000 z-20 ${hasMessages ? 'opacity-100' : 'opacity-0'}`} />
       </main>
 
