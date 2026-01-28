@@ -1,5 +1,7 @@
 {
   "name": "Gemini Pulse",
   "description": "A sophisticated, world-class chatbot interface powered by Google Gemini, featuring real-time streaming responses, markdown rendering, and a sleek, responsive design.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

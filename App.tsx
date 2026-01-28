@@ -6,9 +6,6 @@ import ChatInput from './components/ChatInput';
 import { streamGeminiResponse } from './services/geminiService';
 import { PlusIcon } from './components/Icons';
 
-// Note: window.aistudio and its types are assumed to be provided by the platform environment.
-// Using (window as any) to bypass local type conflicts and adhere to platform availability.
-
 const QUOTES = [
   "SSEC AI: Grounded in Intelligence.",
   "Engineering the future at Sree Sakthi Engineering College.",
@@ -55,7 +52,6 @@ const App: React.FC = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
-  const [hasApiKey, setHasApiKey] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
@@ -78,28 +74,6 @@ const App: React.FC = () => {
     localStorage.setItem('ssec_ai_current_id', newSession.id);
     saveSessionsToLocal(updated);
   }, [sessions]);
-
-  // Check for API key status via platform window.aistudio
-  useEffect(() => {
-    const checkApiKey = async () => {
-      const aistudio = (window as any).aistudio;
-      if (aistudio) {
-        const hasKey = await aistudio.hasSelectedApiKey();
-        setHasApiKey(hasKey);
-      }
-    };
-    checkApiKey();
-  }, []);
-
-  // Open API key selection dialog
-  const handleLinkKey = async () => {
-    const aistudio = (window as any).aistudio;
-    if (aistudio) {
-      await aistudio.openSelectKey();
-      // Per rules, assume success after triggering the selection to avoid race condition issues
-      setHasApiKey(true);
-    }
-  };
 
   useEffect(() => {
     if (hasMessages) return;
@@ -133,43 +107,6 @@ const App: React.FC = () => {
 
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
-
-    // Check for key before sending if not already available
-    const aistudio = (window as any).aistudio;
-    if (!process.env.API_KEY && aistudio) {
-      const hasKey = await aistudio.hasSelectedApiKey();
-      if (!hasKey) {
-        await handleLinkKey();
-      }
-    }
-
-    // --- RAG Grounding ADD Protocol ---
-    const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
-    if (addMatch) {
-      const data = addMatch[1];
-      const pass = addMatch[2];
-      const userMsg: Message = { id: Date.now().toString(), role: Role.USER, content, timestamp: new Date() };
-      
-      let botResponse = "";
-      if (pass === "8344") {
-        try {
-          const currentKnowledge = JSON.parse(localStorage.getItem('ssec_rag_knowledge') || '[]');
-          currentKnowledge.push(data);
-          localStorage.setItem('ssec_rag_knowledge', JSON.stringify(currentKnowledge));
-          botResponse = "ALL DONE";
-        } catch (e) {
-          botResponse = "ERROR: Local buffer write failure.";
-        }
-      } else {
-        botResponse = "ERROR: Unauthorized access key.";
-      }
-
-      const botMsg: Message = { id: (Date.now() + 1).toString(), role: Role.BOT, content: botResponse, timestamp: new Date() };
-      const updated = sessions.map(s => s.id === currentSessionId ? { ...s, messages: [...s.messages, userMsg, botMsg], updatedAt: new Date() } : s);
-      setSessions(updated);
-      saveSessionsToLocal(updated);
-      return;
-    }
 
     let botMessageId = (Date.now() + 1).toString();
     if (!isRetry) {
@@ -226,12 +163,6 @@ const App: React.FC = () => {
         setIsLoading(false);
       },
       (error) => {
-        // Handle "Requested entity was not found" by resetting key selection
-        const aistudio = (window as any).aistudio;
-        if (error?.message?.includes("Requested entity was not found.") && aistudio) {
-          aistudio.openSelectKey();
-        }
-
         setSessions(prev => {
           const updated = prev.map(s => s.id === currentSessionId ? {
             ...s,
@@ -252,13 +183,6 @@ const App: React.FC = () => {
 
   const handleRetry = async () => {
     if (!currentSession) return;
-    
-    // Check if error was likely due to missing key
-    const lastBotMsg = [...currentSession.messages].reverse().find(m => m.role === Role.BOT);
-    if (lastBotMsg?.isError && (!process.env.API_KEY || lastBotMsg.content.includes('API Key'))) {
-       await handleLinkKey();
-    }
-
     const userMessages = currentSession.messages.filter(m => m.role === Role.USER);
     const lastUserMsg = userMessages[userMessages.length - 1];
     if (lastUserMsg) {
@@ -281,15 +205,15 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        {/* Center Side: SSEC AI (Perfect Alignment) */}
+        {/* Center Side: SSEC AI */}
         <div className={`flex items-center justify-center gap-3 transition-opacity duration-1000 ${hasMessages ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}>
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className={`w-2 h-2 rounded-full ${hasApiKey ? 'bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)]' : 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.9)]'} animate-pulse`} />
+           <div className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)] animate-pulse" />
         </div>
 
-        {/* Right Side: Grid Balance Spacer */}
+        {/* Right Side Balance */}
         <div className="flex justify-end" />
       </header>
 
@@ -344,7 +268,6 @@ const App: React.FC = () => {
                <div className="flex justify-center gap-10 text-[10px] font-bold text-white/20 tracking-[0.2em] uppercase">
                  <button onClick={() => setIsAboutOpen(true)} className="hover:text-cyan-400 transition-colors cursor-pointer">About Us</button>
                  <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">Repository</a>
-                 <a href="https://sreesakthi.edu.in" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors">SSEC Official</a>
                </div>
              </footer>
           </div>
@@ -387,19 +310,7 @@ const App: React.FC = () => {
                     </p>
                   </div>
                 ))}
-                
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-purple-500/10 border border-white/5 flex flex-col justify-center">
-                  <h4 className="text-lg font-bold text-white mb-2">Dynamic Grounding</h4>
-                  <p className="text-sm text-white/60 italic leading-relaxed">
-                    "This system supports real-time ingestion of knowledge buffers via secured protocol for persistent academic grounding."
-                  </p>
-                  <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="mt-4 text-[10px] text-cyan-400 uppercase tracking-widest font-bold hover:underline">View Source Code</a>
-                </div>
               </div>
-            </div>
-            
-            <div className="bg-white/5 p-6 flex items-center justify-center border-t border-white/5">
-              <p className="text-[10px] text-white/20 uppercase tracking-[0.3em] font-bold">© 2025 SSEC IT | Engineering Department</p>
             </div>
           </div>
         </div>

@@ -18,6 +18,15 @@ SSEC AI PUBLIC IDENTITY:
   5. PRITHIVIRAJ [Team Member - TM]
 `;
 
+const getApiKey = (): string => {
+  try {
+    // Attempt to access process.env safely
+    return typeof process !== 'undefined' ? process.env.API_KEY || '' : '';
+  } catch (e) {
+    return '';
+  }
+};
+
 const getDynamicKnowledge = (): string => {
   try {
     const stored = localStorage.getItem('ssec_rag_knowledge');
@@ -35,8 +44,10 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  if (!process.env.API_KEY) {
-    const error = new Error("API Key is missing. Please establish a Neural Link.");
+  const apiKey = getApiKey();
+
+  if (!apiKey) {
+    const error = new Error("API_KEY_MISSING: The environment variable is not accessible. If on Vercel, ensure you have added API_KEY and redeployed.");
     onError(error);
     return;
   }
@@ -50,8 +61,7 @@ export const streamGeminiResponse = async (
   const lastUserMessage = messages[messages.length - 1].content;
 
   try {
-    // Create a new instance right before the call to ensure the latest API key is used
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     const chat = ai.chats.create({
       model: MODEL_NAME,
@@ -64,11 +74,9 @@ export const streamGeminiResponse = async (
         ${dynamicKnowledge}
         
         STRICT OPERATIONAL GUIDELINES:
-        1. MANDATORY DISCLOSURE: If anyone asks about your "code", "repository", "github", "source", or "who made you", you MUST provide the link: https://github.com/Praveen-pk-pro/pk-s-chat-bot and credit the SSEC IT student team.
-        2. DATA RETRIEVAL: Use the USER-ADDED UPDATES section to answer questions about specific data added via the ADD command.
-        3. FORMATTING: Use clean Markdown. Avoid excessive asterisks.
-        4. CODE: Only use triple backticks (\`\`\`) for block code segments.
-        5. HONESTY: If a query asks for information not in your identity or added knowledge, simply state that the specific data is not in your current grounding buffer.
+        1. MANDATORY DISCLOSURE: Provide link: https://github.com/Praveen-pk-pro/pk-s-chat-bot when asked about source/creator.
+        2. FORMATTING: Use clean Markdown.
+        3. CODE: Use triple backticks.
         
         You are open-source and your identity is tied to the SSEC IT 2nd-year student project.`,
       },
@@ -88,6 +96,8 @@ export const streamGeminiResponse = async (
 
   } catch (error: any) {
     console.error("SSEC AI Neural Error:", error);
-    onError(error);
+    // Extract a more readable error if possible
+    const detailedError = error?.message || "Failed to connect to Gemini API. Check your network or API key permissions.";
+    onError(new Error(detailedError));
   }
 };

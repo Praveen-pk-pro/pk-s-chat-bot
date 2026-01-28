@@ -7,9 +7,19 @@ interface ChatInputProps {
   disabled?: boolean;
 }
 
+// Extend Window interface for Speech Recognition
+declare global {
+  interface Window {
+    webkitSpeechRecognition: any;
+    SpeechRecognition: any;
+  }
+}
+
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const [input, setInput] = useState('');
+  const [isListening, setIsListening] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -18,9 +28,73 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     }
   }, [input]);
 
+  useEffect(() => {
+    // Initialize Speech Recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
+
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          setInput(prev => {
+            const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
+            return prev + space + finalTranscript;
+          });
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      setIsListening(true);
+      recognitionRef.current.start();
+    }
+  };
+
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (input.trim() && !disabled) {
+      // Stop listening if user manually sends
+      if (isListening) {
+        recognitionRef.current?.stop();
+      }
       onSend(input.trim());
       setInput('');
     }
@@ -44,7 +118,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Write a message..."
+              placeholder={isListening ? "Listening..." : "Write a message..."}
               rows={1}
               disabled={disabled}
               className="w-full bg-transparent text-white/90 py-3 resize-none outline-none disabled:opacity-50 text-[15px] placeholder:text-white/20 min-h-[48px] max-h-[200px] leading-relaxed font-medium"
@@ -53,7 +127,16 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           
           {/* Right Action Group */}
           <div className="flex items-center gap-1 pr-1">
-            <button className="p-3 text-white/40 hover:text-white transition-colors">
+            <button 
+              onClick={toggleListening}
+              disabled={disabled}
+              className={`p-3 transition-all rounded-full ${
+                isListening 
+                ? 'text-cyan-400 bg-cyan-400/10 animate-pulse scale-110' 
+                : 'text-white/40 hover:text-white'
+              }`}
+              title={isListening ? "Stop listening" : "Start voice input"}
+            >
               <AudioIcon className="w-5 h-5" />
             </button>
             
@@ -71,6 +154,14 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           </div>
         </div>
       </div>
+      {isListening && (
+        <div className="mt-2 flex justify-center">
+          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-400/5 border border-cyan-400/10">
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">Voice Mode Active</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
