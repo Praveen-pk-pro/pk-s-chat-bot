@@ -279,14 +279,6 @@ const App: React.FC = () => {
           >
             <PlusIcon className="w-5 h-5 transition-transform group-hover:rotate-90" />
           </button>
-          {!hasApiKey && (
-            <button 
-              onClick={handleLinkKey}
-              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl hover:bg-cyan-500/20 transition-all animate-pulse"
-            >
-              Neural Link Offline
-            </button>
-          )}
         </div>
 
         {/* Center Side: SSEC AI (Perfect Alignment) */}
