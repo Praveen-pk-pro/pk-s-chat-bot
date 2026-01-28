@@ -127,11 +127,18 @@ const App: React.FC = () => {
         setIsKeyMissing(false);
       },
       (error) => {
-        if (error?.message === "API_KEY_MISSING" || error?.status === 403) setIsKeyMissing(true);
+        // Only trigger blocking UI if we're sure it's a key issue
+        if (error?.message === "API_KEY_MISSING") setIsKeyMissing(true);
+        
         setIsLoading(false);
         setSessions(prev => prev.map(s => s.id === currentSessionId ? {
           ...s,
-          messages: s.messages.map(m => m.id === botMessageId ? { ...m, content: "Connection failed. Please verify your API Key in Vercel settings.", isStreaming: false, isError: true } : m)
+          messages: s.messages.map(m => m.id === botMessageId ? { 
+            ...m, 
+            content: `Neural connection interrupted. This usually happens if the API key provided is restricted or invalid for the requested models. Check console for details.`, 
+            isStreaming: false, 
+            isError: true 
+          } : m)
         } : s));
       }
     );
@@ -157,8 +164,6 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Background Grids are handled by global CSS in index.html */}
-
       <main className="flex-1 flex flex-col relative z-10 overflow-hidden">
         <div className="flex-1 relative flex flex-col items-center">
           {/* Welcome Screen */}
@@ -172,7 +177,7 @@ const App: React.FC = () => {
           <div className={`absolute inset-0 overflow-y-auto custom-scrollbar pt-24 ${hasMessages ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
             {currentSession && (
               <div className="w-full max-w-4xl mx-auto px-6 py-12">
-                {currentSession.messages.map(msg => <ChatMessage key={msg.id} message={msg} onRetry={() => handleSendMessage(msg.content)} />)}
+                {currentSession.messages.map(msg => <ChatMessage key={msg.id} message={msg} onRetry={() => handleSendMessage(currentSession.messages[currentSession.messages.length - 2]?.content || "")} />)}
                 
                 {isKeyMissing && (
                   <div className="mt-8 p-10 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-2xl animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -187,25 +192,9 @@ const App: React.FC = () => {
                     </div>
 
                     <div className="space-y-6 text-white/60 text-sm leading-relaxed">
-                      <p>Vercel does not automatically read <code>.env</code> files from GitHub for security. You must add your key manually:</p>
-                      
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
-                          <h4 className="text-white font-bold mb-2">Step 1: Dashboard</h4>
-                          <p className="text-xs">Go to your Vercel Project Dashboard &gt; <strong>Settings</strong> &gt; <strong>Environment Variables</strong>.</p>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
-                          <h4 className="text-white font-bold mb-2">Step 2: Add Key</h4>
-                          <p className="text-xs">Add a new variable with Key: <code>API_KEY</code> and Value: <code>(Your Gemini Key)</code>.</p>
-                        </div>
-                        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20 md:col-span-2">
-                          <h4 className="text-red-400 font-bold mb-2">Step 3: REDEPLOY (CRITICAL)</h4>
-                          <p className="text-xs">Go to the <strong>Deployments</strong> tab, click the <strong>three dots</strong> on your latest build, and select <strong>Redeploy</strong>. The key won't work until you do this!</p>
-                        </div>
-                      </div>
-                      
+                      <p>The neural link could not be established. If you have hardcoded the key, ensure it is active in your Google AI Studio dashboard.</p>
                       <div className="pt-4 flex justify-center">
-                        <a href="https://aistudio.google.com/app/apikey" target="_blank" className="px-8 py-3 bg-white text-black rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-cyan-400 hover:scale-105 transition-all">Get New Gemini Key</a>
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" className="px-8 py-3 bg-white text-black rounded-xl text-xs font-bold uppercase tracking-[0.2em] hover:bg-cyan-400 hover:scale-105 transition-all">Check API Key Status</a>
                       </div>
                     </div>
                   </div>
