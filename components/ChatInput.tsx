@@ -21,6 +21,7 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
 
+  // Auto-resize textarea
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
@@ -28,55 +29,47 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
     }
   }, [input]);
 
+  // Initialize Speech Recognition
   useEffect(() => {
-    // Initialize Speech Recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
 
-      recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
+      recognition.onresult = (event: any) => {
         let finalTranscript = '';
-
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
           }
         }
 
         if (finalTranscript) {
           setInput(prev => {
-            const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
-            return prev + space + finalTranscript;
+            const separator = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
+            return prev + separator + finalTranscript;
           });
         }
       };
 
-      recognitionRef.current.onend = () => {
-        setIsListening(false);
-      };
-
-      recognitionRef.current.onerror = (event: any) => {
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
       };
-    }
 
-    return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-    };
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
   }, []);
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert("Speech recognition is not supported in this browser.");
+      alert('Speech recognition is not supported in this browser.');
       return;
     }
 
@@ -91,7 +84,6 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   const handleSubmit = (e?: React.FormEvent) => {
     e?.preventDefault();
     if (input.trim() && !disabled) {
-      // Stop listening if user manually sends
       if (isListening) {
         recognitionRef.current?.stop();
       }
@@ -108,11 +100,11 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
   };
 
   return (
-    <div className="w-full">
-      <div className="bg-[#0f0f0f] rounded-[24px] px-2 py-2 shadow-2xl border border-white/5 group transition-all duration-300 focus-within:border-white/10 ring-1 ring-white/5">
-        <div className="flex items-center gap-2">
+    <div className="w-full relative">
+      <div className="bg-[#0f0f0f] rounded-[28px] p-2 shadow-2xl border border-white/5 transition-all duration-300 focus-within:border-white/20 ring-1 ring-white/5">
+        <div className="flex items-end gap-2">
           {/* Text Area */}
-          <div className="flex-1 px-4">
+          <div className="flex-1 min-h-[48px] px-4 flex items-center">
             <textarea
               ref={textareaRef}
               value={input}
@@ -121,19 +113,20 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
               placeholder={isListening ? "Listening..." : "Write a message..."}
               rows={1}
               disabled={disabled}
-              className="w-full bg-transparent text-white/90 py-3 resize-none outline-none disabled:opacity-50 text-[15px] placeholder:text-white/20 min-h-[48px] max-h-[200px] leading-relaxed font-medium"
+              className="w-full bg-transparent text-white/90 py-3 resize-none outline-none disabled:opacity-50 text-[15px] placeholder:text-white/20 max-h-[200px] leading-relaxed font-medium"
             />
           </div>
           
-          {/* Right Action Group */}
-          <div className="flex items-center gap-1 pr-1">
+          {/* Action Group */}
+          <div className="flex items-center gap-2 pb-1 pr-1">
             <button 
+              type="button"
               onClick={toggleListening}
               disabled={disabled}
-              className={`p-3 transition-all rounded-full ${
+              className={`p-3 rounded-full transition-all duration-300 ${
                 isListening 
-                ? 'text-cyan-400 bg-cyan-400/10 animate-pulse scale-110' 
-                : 'text-white/40 hover:text-white'
+                  ? 'bg-cyan-500/20 text-cyan-400 animate-pulse' 
+                  : 'text-white/30 hover:text-white hover:bg-white/5'
               }`}
               title={isListening ? "Stop listening" : "Start voice input"}
             >
@@ -141,12 +134,13 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
             </button>
             
             <button
-              onClick={handleSubmit}
+              type="button"
+              onClick={() => handleSubmit()}
               disabled={!input.trim() || disabled}
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 ${
                 !input.trim() || disabled 
-                ? 'bg-white/5 text-white/10' 
-                : 'bg-white/10 text-white hover:bg-white/20 active:scale-95'
+                  ? 'bg-white/5 text-white/10' 
+                  : 'bg-white text-black hover:scale-105 active:scale-95 shadow-[0_0_20px_rgba(255,255,255,0.15)]'
               }`}
             >
               <SendIcon className="w-5 h-5" />
@@ -154,12 +148,15 @@ const ChatInput: React.FC<ChatInputProps> = ({ onSend, disabled }) => {
           </div>
         </div>
       </div>
+      
       {isListening && (
-        <div className="mt-2 flex justify-center">
-          <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-400/5 border border-cyan-400/10">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-[10px] font-mono text-cyan-400 uppercase tracking-widest font-bold">Voice Mode Active</span>
+        <div className="absolute -top-12 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2">
+          <div className="flex gap-1 items-end h-3">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="w-1 bg-cyan-400 rounded-full animate-data-stream" style={{ animationDelay: `${i * 0.1}s` }} />
+            ))}
           </div>
+          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-widest">Listening...</span>
         </div>
       )}
     </div>
