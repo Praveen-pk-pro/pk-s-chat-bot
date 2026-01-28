@@ -2,44 +2,24 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { Message, Role } from "../types";
 
-const MODEL_NAME = 'gemini-3-flash-preview';
-
 const SSEC_IDENTITY = `
-SSEC AI PUBLIC IDENTITY:
-- Official Name: SSEC AI (Sree Sakthi Engineering College Artificial Intelligence).
-- Creator Group: 2nd-year Information Technology (IT) students.
-- Institution: Sree Sakthi Engineering College (SSEC).
-- Public Source Code Repository: https://github.com/Praveen-pk-pro/pk-s-chat-bot
-- Development Team [THE SSEC 5]:
-  1. PRAVEEN KUMAR [Team Lead - TL]
-  2. SARAN [Team Member - TM]
-  3. SANJAY [Team Member - TM]
-  4. SENNANPOSALI [Team Member - TM]
-  5. PRITHIVIRAJ [Team Member - TM]
+SSEC AI IDENTITY:
+- Institution: Sree Sakthi Engineering College (SSEC), Karamadai, Coimbatore.
+- Department: Information Technology (IT).
+- Team: The SSEC 5 (2nd Year IT Students).
+- Members:
+  1. PRAVEEN KUMAR (TL - Team Lead)
+  2. SARAN (TM - UI/UX Specialist)
+  3. SANJAY (TM - Interaction Designer)
+  4. SENNANPOSALI (TM - Backend Systems)
+  5. PRITHIVIRAJ (TM - Prompt Architect)
 `;
 
-const getApiKey = (): string => {
-  try {
-    // Check multiple possible environment variable names
-    const key = (typeof process !== 'undefined' ? (process.env?.API_KEY || process.env?.GEMINI_API_KEY) : undefined) || 
-                (window as any)._ENV_?.API_KEY || 
-                (window as any)._ENV_?.GEMINI_API_KEY;
-    return key || '';
-  } catch (e) {
-    return '';
-  }
-};
-
-const getDynamicKnowledge = (): string => {
-  try {
-    const stored = localStorage.getItem('ssec_rag_knowledge');
-    if (!stored) return '';
-    const items: string[] = JSON.parse(stored);
-    return `\nUSER-ADDED UPDATES & KNOWLEDGE:\n${items.join('\n')}`;
-  } catch (e) {
-    return '';
-  }
-};
+const MODELS_TO_TRY = [
+  'gemini-3-flash-preview',
+  'gemini-2.5-flash-preview',
+  'gemini-flash-lite-latest'
+];
 
 export const streamGeminiResponse = async (
   messages: Message[],
@@ -47,60 +27,63 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  const apiKey = getApiKey();
+  const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    const error = new Error("API_KEY_MISSING");
-    onError(error);
+    onError(new Error("API_KEY_MISSING"));
     return;
   }
 
-  const dynamicKnowledge = getDynamicKnowledge();
-  
   const history = messages.slice(0, -1).map(msg => ({
     role: msg.role === Role.USER ? 'user' : 'model',
     parts: [{ text: msg.content }]
   }));
+  
   const lastUserMessage = messages[messages.length - 1].content;
+  let success = false;
+  let lastError: any = null;
 
-  try {
-    const ai = new GoogleGenAI({ apiKey });
+  // Attempt connection with fallback logic
+  for (const modelName of MODELS_TO_TRY) {
+    if (success) break;
     
-    const chat = ai.chats.create({
-      model: MODEL_NAME,
-      history,
-      config: {
-        thinkingConfig: { thinkingBudget: 0 },
-        systemInstruction: `You are SSEC AI, the official public intelligence engine for the Information Technology Department at Sree Sakthi Engineering College.
-        
-        ${SSEC_IDENTITY}
-        ${dynamicKnowledge}
-        
-        STRICT OPERATIONAL GUIDELINES:
-        1. MANDATORY DISCLOSURE: Provide link: https://github.com/Praveen-pk-pro/pk-s-chat-bot when asked about source/creator.
-        2. FORMATTING: Use clean Markdown.
-        3. CODE: Use triple backticks for code blocks.
-        4. STRUCTURE: Use headers (###) and lists where appropriate for long responses.
-        
-        You are open-source and your identity is tied to the SSEC IT 2nd-year student project.`,
-      },
-    });
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const chat = ai.chats.create({
+        model: modelName,
+        history: history,
+        config: {
+          systemInstruction: `You are SSEC AI, a highly advanced engineering assistant developed by 2nd-year IT students at Sree Sakthi Engineering College.
+          
+          ${SSEC_IDENTITY}
+          
+          STRICT GUIDELINES:
+          1. Technical Excellence: Provide accurate engineering and coding advice.
+          2. Identity: If asked "who are you?", respond that you are SSEC AI, created by Praveen Kumar and his team at SSEC.
+          3. Tone: Helpful, professional, and grounded in academic intelligence.
+          4. Format: Use beautiful Markdown. Use bold for key terms. Use tables for comparisons.`,
+        },
+      });
 
-    const responseStream = await chat.sendMessageStream({ message: lastUserMessage });
+      const result = await chat.sendMessageStream({ message: lastUserMessage });
 
-    let fullText = "";
-    for await (const chunk of responseStream) {
-      const c = chunk as GenerateContentResponse;
-      const chunkText = c.text || "";
-      fullText += chunkText;
-      onChunk(chunkText);
+      let fullText = "";
+      for await (const chunk of result) {
+        const c = chunk as GenerateContentResponse;
+        const chunkText = c.text || "";
+        fullText += chunkText;
+        onChunk(chunkText);
+      }
+
+      onComplete(fullText);
+      success = true;
+    } catch (error: any) {
+      console.warn(`Model ${modelName} failed, trying next...`, error);
+      lastError = error;
     }
+  }
 
-    onComplete(fullText);
-
-  } catch (error: any) {
-    console.error("SSEC AI Neural Error:", error);
-    const detailedError = error?.message || "Internal Neural Fault. Verify link parameters.";
-    onError(new Error(detailedError));
+  if (!success) {
+    onError(lastError || new Error("All models failed to respond. Check API Key and limits."));
   }
 };
