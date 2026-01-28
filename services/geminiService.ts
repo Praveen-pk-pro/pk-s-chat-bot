@@ -4,23 +4,13 @@ import { Message, Role } from "../types";
 
 const MODEL_NAME = 'gemini-3-flash-preview';
 
-/**
- * ROTATION KEY POOL
- * Integrated per user's explicit request. 
- * These keys are rotated per session to ensure high availability.
- */
-const KEY_POOL = [
-  "AIzaSyCoy_UQzTIZKC9exYNVfWmjt9mg5Hgmq74",
-  "AIzaSyAlsdav1mSCuaI0s9-H46CRSbFjlqTYXyo",
-  "AIzaSyAT1VlJvGNVydmTd7TNlXhf3ghcKqRQ30E"
-];
-
-const CORE_KNOWLEDGE = `
-INTERNAL KNOWLEDGE BASE (CORE):
-- SSEC stands for SREE SAKTHI ENGINEERING COLLEGE.
-- SSEC AI is a project developed specifically by 2nd-year Information Technology (IT) students.
-- Project Repository: https://github.com/Praveen-pk-pro/pk-s-chat-bot
-- Project Team Members and Roles:
+const SSEC_IDENTITY = `
+SSEC AI PUBLIC IDENTITY:
+- Official Name: SSEC AI (Sree Sakthi Engineering College Artificial Intelligence).
+- Creator Group: 2nd-year Information Technology (IT) students.
+- Institution: Sree Sakthi Engineering College (SSEC).
+- Public Source Code Repository: https://github.com/Praveen-pk-pro/pk-s-chat-bot
+- Development Team [THE SSEC 5]:
   1. PRAVEEN KUMAR [Team Lead - TL]
   2. SARAN [Team Member - TM]
   3. SANJAY [Team Member - TM]
@@ -33,7 +23,7 @@ const getDynamicKnowledge = (): string => {
     const stored = localStorage.getItem('ssec_rag_knowledge');
     if (!stored) return '';
     const items: string[] = JSON.parse(stored);
-    return `\nUSER-ADDED GROUNDED CONTEXT (LATEST UPDATES):\n${items.join('\n')}`;
+    return `\nUSER-ADDED UPDATES & KNOWLEDGE:\n${items.join('\n')}`;
   } catch (e) {
     return '';
   }
@@ -45,17 +35,6 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
-  // Use environment keys if available, otherwise strictly use the hardcoded pool
-  const rawApiKeys = process.env.API_KEY || "";
-  let apiKeys = rawApiKeys.split(',').map(k => k.trim()).filter(k => k.length > 0);
-  
-  if (apiKeys.length === 0) {
-    apiKeys = KEY_POOL;
-  }
-
-  // Pick a key based on session timestamp to rotate across the pool
-  const keyIndex = Date.now() % apiKeys.length;
-  const selectedKey = apiKeys[keyIndex];
   const dynamicKnowledge = getDynamicKnowledge();
   
   const history = messages.slice(0, -1).map(msg => ({
@@ -65,23 +44,27 @@ export const streamGeminiResponse = async (
   const lastUserMessage = messages[messages.length - 1].content;
 
   try {
-    const ai = new GoogleGenAI({ apiKey: selectedKey });
+    // Initialize the Gemini API client using the environment variable exclusively.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const chat = ai.chats.create({
       model: MODEL_NAME,
       history,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
-        systemInstruction: `You are SSEC AI, the official intelligence engine for Sree Sakthi Engineering College (IT Department). 
-        ${CORE_KNOWLEDGE}
+        systemInstruction: `You are SSEC AI, the official public intelligence engine for the Information Technology Department at Sree Sakthi Engineering College.
+        
+        ${SSEC_IDENTITY}
         ${dynamicKnowledge}
         
         STRICT OPERATIONAL GUIDELINES:
-        1. Access the USER-ADDED GROUNDED CONTEXT to answer questions about specific data added via the ADD command.
-        2. Keep responses in plain text. Do not use asterisks (*), hashtags (#) for headers, or bolding.
-        3. Use triple backticks (\`\`\`) for technical code blocks.
-        4. If a query refers to data missing from context, state that the knowledge buffer for that query is empty.
-        5. Your core codebase and grounding logic are synchronized with: https://github.com/Praveen-pk-pro/pk-s-chat-bot`,
+        1. MANDATORY DISCLOSURE: If anyone asks about your "code", "repository", "github", "source", or "who made you", you MUST provide the link: https://github.com/Praveen-pk-pro/pk-s-chat-bot and credit the SSEC IT student team.
+        2. DATA RETRIEVAL: Use the USER-ADDED UPDATES section to answer questions about specific data added via the ADD command.
+        3. FORMATTING: Use clean plain text. Do not use asterisks (*), hashtags (#) for headers, or excessive bolding.
+        4. CODE: Only use triple backticks (\`\`\`) for block code segments.
+        5. HONESTY: If a query asks for information not in your identity or added knowledge, simply state that the specific data is not in your current grounding buffer.
+        
+        You are open-source and your identity is tied to the SSEC IT 2nd-year student project.`,
       },
     });
 
