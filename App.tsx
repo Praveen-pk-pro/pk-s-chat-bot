@@ -24,6 +24,7 @@ const TEAM_MEMBERS = [
 ];
 
 const GITHUB_URL = "https://github.com/Praveen-pk-pro/pk-s-chat-bot";
+const GEMINI_API_URL = "https://aistudio.google.com/app/apikey";
 
 const App: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>(() => {
@@ -262,19 +263,41 @@ const App: React.FC = () => {
                       <p>SSEC AI requires an <strong>API_KEY</strong> environment variable to function. Follow these steps to establish the link:</p>
                       
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
+                        <div className="p-5 rounded-2xl bg-black/40 border border-white/5 hover:border-white/10 transition-colors">
                           <h4 className="text-white font-bold mb-2 flex items-center gap-2">
                             <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">1</span>
-                            Vercel Setup
+                            Get a Key
                           </h4>
-                          <p className="text-xs">Navigate to <strong>Settings &gt; Environment Variables</strong>. Add <code>API_KEY</code> with your Gemini key. <strong>Redeploy</strong> to apply changes.</p>
+                          <p className="text-xs mb-3">Obtain your secret key from Google AI Studio.</p>
+                          <a 
+                            href={GEMINI_API_URL} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="inline-block px-4 py-2 bg-white/10 hover:bg-white text-white hover:text-black rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all"
+                          >
+                            Go to AI Studio
+                          </a>
                         </div>
                         <div className="p-5 rounded-2xl bg-black/40 border border-white/5">
                           <h4 className="text-white font-bold mb-2 flex items-center gap-2">
                             <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">2</span>
-                            Local Setup
+                            Vercel Setup
                           </h4>
-                          <p className="text-xs">Create a <code>.env</code> file in the root directory and add <code>API_KEY=your_key_here</code>.</p>
+                          <p className="text-xs mb-2"><strong>IMPORTANT:</strong> Do not add .env to GitHub. Go to Vercel Settings &gt; Environment Variables. Add <code>API_KEY</code>.</p>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-red-500/10 border border-red-500/20">
+                          <h4 className="text-red-400 font-bold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-red-400 text-black text-[10px] font-black">3</span>
+                            Redeploy
+                          </h4>
+                          <p className="text-xs text-red-400/80">After saving the key in Vercel, you <strong>MUST</strong> redeploy your app from the "Deployments" tab for it to work.</p>
+                        </div>
+                        <div className="p-5 rounded-2xl bg-cyan-400/10 border border-cyan-400/20">
+                          <h4 className="text-cyan-400 font-bold mb-2 flex items-center gap-2">
+                            <span className="w-5 h-5 flex items-center justify-center rounded-full bg-cyan-400 text-black text-[10px] font-black">4</span>
+                            Verification
+                          </h4>
+                          <p className="text-xs text-cyan-400/80">Once redeployed, refresh the page. The status indicator at the top will turn cyan.</p>
                         </div>
                       </div>
                     </div>
