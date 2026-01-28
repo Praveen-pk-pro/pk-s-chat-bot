@@ -6,6 +6,9 @@ import ChatInput from './components/ChatInput';
 import { streamGeminiResponse } from './services/geminiService';
 import { PlusIcon } from './components/Icons';
 
+// Note: window.aistudio and its types are assumed to be provided by the platform environment.
+// Using (window as any) to bypass local type conflicts and adhere to platform availability.
+
 const QUOTES = [
   "SSEC AI: Grounded in Intelligence.",
   "Engineering the future at Sree Sakthi Engineering College.",
@@ -52,6 +55,7 @@ const App: React.FC = () => {
   const [quoteIndex, setQuoteIndex] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const currentSession = sessions.find(s => s.id === currentSessionId) || null;
@@ -74,6 +78,28 @@ const App: React.FC = () => {
     localStorage.setItem('ssec_ai_current_id', newSession.id);
     saveSessionsToLocal(updated);
   }, [sessions]);
+
+  // Check for API key status via platform window.aistudio
+  useEffect(() => {
+    const checkApiKey = async () => {
+      const aistudio = (window as any).aistudio;
+      if (aistudio) {
+        const hasKey = await aistudio.hasSelectedApiKey();
+        setHasApiKey(hasKey);
+      }
+    };
+    checkApiKey();
+  }, []);
+
+  // Open API key selection dialog
+  const handleLinkKey = async () => {
+    const aistudio = (window as any).aistudio;
+    if (aistudio) {
+      await aistudio.openSelectKey();
+      // Per rules, assume success after triggering the selection to avoid race condition issues
+      setHasApiKey(true);
+    }
+  };
 
   useEffect(() => {
     if (hasMessages) return;
@@ -108,6 +134,15 @@ const App: React.FC = () => {
   const handleSendMessage = async (content: string, isRetry = false) => {
     if (!currentSessionId || !currentSession) return;
 
+    // Check for key before sending if not already available
+    const aistudio = (window as any).aistudio;
+    if (!process.env.API_KEY && aistudio) {
+      const hasKey = await aistudio.hasSelectedApiKey();
+      if (!hasKey) {
+        await handleLinkKey();
+      }
+    }
+
     // --- RAG Grounding ADD Protocol ---
     const addMatch = content.match(/ADD\(DATA="([^"]+)",\s*PASS=(\d+)\)/i);
     if (addMatch) {
@@ -121,8 +156,6 @@ const App: React.FC = () => {
           const currentKnowledge = JSON.parse(localStorage.getItem('ssec_rag_knowledge') || '[]');
           currentKnowledge.push(data);
           localStorage.setItem('ssec_rag_knowledge', JSON.stringify(currentKnowledge));
-          
-          // Exactly as requested
           botResponse = "ALL DONE";
         } catch (e) {
           botResponse = "ERROR: Local buffer write failure.";
@@ -193,6 +226,12 @@ const App: React.FC = () => {
         setIsLoading(false);
       },
       (error) => {
+        // Handle "Requested entity was not found" by resetting key selection
+        const aistudio = (window as any).aistudio;
+        if (error?.message?.includes("Requested entity was not found.") && aistudio) {
+          aistudio.openSelectKey();
+        }
+
         setSessions(prev => {
           const updated = prev.map(s => s.id === currentSessionId ? {
             ...s,
@@ -211,8 +250,15 @@ const App: React.FC = () => {
     );
   };
 
-  const handleRetry = () => {
+  const handleRetry = async () => {
     if (!currentSession) return;
+    
+    // Check if error was likely due to missing key
+    const lastBotMsg = [...currentSession.messages].reverse().find(m => m.role === Role.BOT);
+    if (lastBotMsg?.isError && (!process.env.API_KEY || lastBotMsg.content.includes('API Key'))) {
+       await handleLinkKey();
+    }
+
     const userMessages = currentSession.messages.filter(m => m.role === Role.USER);
     const lastUserMsg = userMessages[userMessages.length - 1];
     if (lastUserMsg) {
@@ -225,7 +271,7 @@ const App: React.FC = () => {
       {/* Centered Header Bar */}
       <header className="fixed top-0 left-0 right-0 z-40 h-16 grid grid-cols-3 items-center px-6 bg-transparent pointer-events-none">
         {/* Left Side: Interaction Control */}
-        <div className="flex items-center pointer-events-auto">
+        <div className="flex items-center pointer-events-auto gap-2">
           <button 
             onClick={createNewSession}
             className="p-3 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all active:scale-95 group"
@@ -233,6 +279,14 @@ const App: React.FC = () => {
           >
             <PlusIcon className="w-5 h-5 transition-transform group-hover:rotate-90" />
           </button>
+          {!hasApiKey && (
+            <button 
+              onClick={handleLinkKey}
+              className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl hover:bg-cyan-500/20 transition-all animate-pulse"
+            >
+              Neural Link Offline
+            </button>
+          )}
         </div>
 
         {/* Center Side: SSEC AI (Perfect Alignment) */}
@@ -240,7 +294,7 @@ const App: React.FC = () => {
            <h1 className="text-sm font-bold tracking-[0.3em] uppercase text-white font-['JetBrains_Mono']">
              <span className="bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">SSEC AI</span>
            </h1>
-           <div className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shadow-[0_0_12px_rgba(34,211,238,0.9)]" />
+           <div className={`w-2 h-2 rounded-full ${hasApiKey ? 'bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.9)]' : 'bg-red-400 shadow-[0_0_12px_rgba(248,113,113,0.9)]'} animate-pulse`} />
         </div>
 
         {/* Right Side: Grid Balance Spacer */}

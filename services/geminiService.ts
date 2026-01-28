@@ -9,6 +9,7 @@ SSEC AI PUBLIC IDENTITY:
 - Official Name: SSEC AI (Sree Sakthi Engineering College Artificial Intelligence).
 - Creator Group: 2nd-year Information Technology (IT) students.
 - Institution: Sree Sakthi Engineering College (SSEC).
+- Public Source Code Repository: https://github.com/Praveen-pk-pro/pk-s-chat-bot
 - Development Team [THE SSEC 5]:
   1. PRAVEEN KUMAR [Team Lead - TL]
   2. SARAN [Team Member - TM]
@@ -34,6 +35,12 @@ export const streamGeminiResponse = async (
   onComplete: (fullText: string) => void,
   onError: (error: any) => void
 ) => {
+  if (!process.env.API_KEY) {
+    const error = new Error("API Key is missing. Please establish a Neural Link.");
+    onError(error);
+    return;
+  }
+
   const dynamicKnowledge = getDynamicKnowledge();
   
   const history = messages.slice(0, -1).map(msg => ({
@@ -43,7 +50,7 @@ export const streamGeminiResponse = async (
   const lastUserMessage = messages[messages.length - 1].content;
 
   try {
-    // Initialize the Gemini API client using the environment variable exclusively.
+    // Create a new instance right before the call to ensure the latest API key is used
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     
     const chat = ai.chats.create({
@@ -51,15 +58,15 @@ export const streamGeminiResponse = async (
       history,
       config: {
         thinkingConfig: { thinkingBudget: 0 },
-        systemInstruction: `You are SSEC AI, the public intelligence engine for the  Sree Sakthi Engineering College.
+        systemInstruction: `You are SSEC AI, the official public intelligence engine for the Information Technology Department at Sree Sakthi Engineering College.
         
         ${SSEC_IDENTITY}
         ${dynamicKnowledge}
         
         STRICT OPERATIONAL GUIDELINES:
-        1. MANDATORY DISCLOSURE: If anyone asks about you like  "who made you", you MUST provide the  credit the SSEC IT student team.
+        1. MANDATORY DISCLOSURE: If anyone asks about your "code", "repository", "github", "source", or "who made you", you MUST provide the link: https://github.com/Praveen-pk-pro/pk-s-chat-bot and credit the SSEC IT student team.
         2. DATA RETRIEVAL: Use the USER-ADDED UPDATES section to answer questions about specific data added via the ADD command.
-        3. FORMATTING: Use clean plain text. Do not use asterisks (*), hashtags (#) for headers, or excessive bolding.
+        3. FORMATTING: Use clean Markdown. Avoid excessive asterisks.
         4. CODE: Only use triple backticks (\`\`\`) for block code segments.
         5. HONESTY: If a query asks for information not in your identity or added knowledge, simply state that the specific data is not in your current grounding buffer.
         
